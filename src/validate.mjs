@@ -70,7 +70,10 @@ export function validatePlan(plan, ctx) {
     if (!kb.materialByName.has(sc.stone_material)) p.push(`${tag}: scene.stone_material debe ser uno de: ${kb.materials.map((m) => m.nombre).join(", ")}.`);
     if (layouts[i] !== "C" && layouts[i] !== "G") for (const k of ["space", "furniture_and_materials", "light", "camera", "stone_application"]) if (!sc[k] || String(sc[k]).length < 4) p.push(`${tag}: falta scene.${k}.`);
     if (/\b(personas?|people|persons?|man|woman|mujer|hombre|ni[ñn]os?|children|child)\b/i.test(stripNegations(sc))) p.push(`${tag}: la escena no debe incluir personas.`);
-    if (/\b(open door|open doors|puerta abierta|edge of the slab|slab edge|thick|cantos?)\b/i.test(stripNegations(sc))) p.push(`${tag}: la escena no puede mostrar cantos ni espesor (regla de realismo).`);
+    {
+      const m = stripNegations(sc).match(/\b(open door|open doors|puerta abierta|edge of the slab|slab edge|thick|cantos?)\b/i);
+      if (m) p.push(`${tag}: la escena menciona «${m[0]}»: no puede mostrar cantos ni espesor (regla de realismo). Reformula sin esa idea.`);
+    }
   });
 
   const all = [c.problem, c.solution, c.cta_question, ...(c.bullets ?? []), ...plan.slides.flatMap(slideTexts)].filter(Boolean).join("\n");
