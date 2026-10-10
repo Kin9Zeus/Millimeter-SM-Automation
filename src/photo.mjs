@@ -1,3 +1,4 @@
+import sharp from "sharp";
 import { PHOTO_BRIEF } from "./compose.mjs";
 import { cfg, log, logError } from "./config.mjs";
 import { generateImage, generateJson } from "./gemini.mjs";
@@ -9,7 +10,7 @@ const REALISM_RULES =
   "Flat, rigid, perfectly installed stone with no visible stone edges, no cut edges and no thickness visible anywhere. " +
   "No bending, folding, peeling, rolling, paper-like or floating stone. Doors and cabinet fronts are closed. No people, no hands.";
 
-const NO_TEXT = "ABSOLUTELY NO text, letters, numbers, logos, watermarks, captions, labels or signage anywhere in the image.";
+const NO_TEXT = "ABSOLUTELY NO text, letters, numbers, logos, watermarks, captions, labels or signage anywhere in the image. The photograph is full-bleed: it fills the entire frame edge to edge with NO white or cream borders, margins, bars, letterboxing or frames.";
 const STYLE = "Photorealistic luxury architectural photograph for a high-end natural stone brand, vertical 3:4, quiet luxury, editorial minimalist style, generous negative space, Architectural Digest style, true-to-life materials, reflections and physics.";
 const PALETTE = "Palette: beige, sand, travertine, cream, warm oak and brushed brass accents.";
 
@@ -42,6 +43,7 @@ function qaPrompt(layout) {
 3. La piedra se ve gruesa: cantos de placa visibles, puertas o frentes abiertos mostrando espesor, bordes con grosor.
 4. La piedra aparece doblada, plegada, enrollada, levantada como papel o flotando.
 5. Hay personas, manos o figuras deformes.
+8. La foto NO ocupa todo el cuadro: tiene márgenes, franjas o bordes blancos/crema/oscuros a los lados, arriba o abajo (letterboxing) o está enmarcada.
 6. Objetos claramente deformes o físicamente imposibles (muebles fusionados, geometría rota, perspectiva imposible, reflejos incoherentes). Detalles menores NO cuentan.
 ${layout === "C" || layout === "G" ? "7. NO es una textura pura de piedra a cuadro completo (se ve una habitación, mueble, grifo, objeto, borde o fondo).\n" : ""}${layout === "E" ? "7. La franja superior (30 % de la altura) NO es una zona clara, despejada y lisa donde pueda ponerse texto oscuro.\n" : ""}${layout === "A" ? "7. El tercio inferior tiene detalles importantes o muy cargados (se cubrirá con un degradado oscuro y texto).\n" : ""}Responde SOLO JSON: {"ok": true|false, "issues": ["falla concreta y cómo corregirla en el prompt, en inglés"]}`;
 }
@@ -59,17 +61,45 @@ export async function inspectPhoto(buffer, layout) {
 export class BudgetError extends Error {}
 
 /**
+ * Red de seguridad contra el letterbox: si la IA entrega la foto con franjas laterales perfectamente uniformes
+ * (desviación ≈ 0 en toda la altura), se recortan. Una pared real siempre tiene ruido > 1,2, así que no se toca contenido.
+ */
+export async function trimSideBars(buffer, { maxFraction = 0.15, maxStd = 1.2 } = {}) {
+  const { data, info } = await sharp(buffer).greyscale().raw().toBuffer({ resolveWithObject: true });
+  const { width: w, height: h } = info;
+  const colStd = (x) => {
+    let sum = 0, sq = 0;
+    for (let y = 0; y < h; y++) { const v = data[y * w + x]; sum += v; sq += v * v; }
+    const mean = sum / h;
+    return Math.sqrt(Math.max(0, sq / h - mean * mean));
+  };
+  const limit = Math.floor(w * maxFraction);
+  let left = 0, right = 0;
+  while (left < limit && colStd(left) < maxStd) left++;
+  while (right < limit && colStd(w - 1 - right) < maxStd) right++;
+  if (left < 8 && right < 8) return { buffer, trimmed: false };
+  const pad = 4; // pequeño margen extra para quitar el borde suavizado
+  const x0 = left ? left + pad : 0, x1 = w - (right ? right + pad : 0);
+  const out = await sharp(buffer).extract({ left: x0, top: 0, width: x1 - x0, height: h }).jpeg({ quality: 95 }).toBuffer();
+  return { buffer: out, trimmed: true, removed: { left: x0, right: w - x1 } };
+}
+
+/**
  * Genera la foto de una pieza y la inspecciona; si falla, regenera con correcciones concretas (como pide el prompt
  * maestro: «correcciones puntuales en lugar de regenerar a ciegas»). `budget` = { used, max } compartido por el post.
  */
 export async function generateCheckedPhoto({ slide, kb, refs = [], budget, index = 0, date = "x" }) {
-  const base = buildPhotoPrompt(slide, kb);
+  let base = buildPhotoPrompt(slide, kb);
+  // La referencia solo aporta material y lenguaje de diseño; sin esto el modelo copia la escena de la primera pieza.
+  if (refs.length) base += "\n\nREFERENCE IMAGE: use it ONLY for the stone material, color palette and design language. Show a completely DIFFERENT space, different furniture, a different camera angle and a different composition. Do NOT repeat or copy the reference scene.";
   let extra = "";
   let lastIssues = [];
   for (let attempt = 1; attempt <= cfg.maxGenerationsPerSlide; attempt++) {
     if (budget.used >= budget.max) throw new BudgetError(`Tope diario de imágenes alcanzado (${budget.max}).`);
     budget.used++;
     const g = await generateImage(base + extra, refs);
+    const t = await trimSideBars(g.buffer);
+    if (t.trimmed) { log(`Se recortaron franjas laterales de la foto (${t.removed.left}px izq., ${t.removed.right}px der.).`); g.buffer = t.buffer; }
     const qa = await inspectPhoto(g.buffer, slide.layout);
     if (qa.ok) {
       if (attempt > 1) log(`Foto aprobada tras ${attempt} intentos.`);

@@ -128,7 +128,7 @@ const LAYOUT_FNS = {
     const veil = svg(`<rect width="${W}" height="${H}" fill="${C.carbonDeep}" opacity="0.46"/>`);
     const big = s.big ?? "";
     const bigSize = fitSize(big, 250, 900, { family: SERIF }, 90);
-    const body = wordmark(W / 2, 110, { anchor: "middle" }) + eyebrow(W / 2, 168, s.eyebrow, { anchor: "middle" }) +
+    const body = wordmark(W / 2, 110, { anchor: "middle" }) + eyebrow(W / 2, 168, s.eyebrow, { anchor: "middle", fill: C.beige }) +
       t(W / 2, 700, big, { size: bigSize, family: SERIF, weight: 500, fill: C.beige, anchor: "middle" }) +
       (s.bigLabel ? t(W / 2, 700 + bigSize * 0.2 + 36, s.bigLabel.toUpperCase(), { size: 26, weight: 500, fill: C.gold, anchor: "middle", spacing: 6 }) : "") +
       (s.title1 ? title(W / 2, 1090, s.title1, s.title2, { fill: C.beige, anchor: "middle", size: 62, maxWidth: 900 }) : "") +
