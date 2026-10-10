@@ -31,7 +31,10 @@ export const FIXED = {
   baseTags: ["#MILLIMETER", "#PiedraNatural"],
 };
 
-const slideTexts = (s) => [s.eyebrow, s.title1, s.title2, s.subtitle, s.big, s.bigLabel].filter(Boolean);
+// Las escenas suelen decir «no people» o «no visible slab edges» (justo lo que pedimos): una frase negada no es una falla.
+export const stripNegations = (obj) => Object.values(obj ?? {}).map(String).join(" | ").replace(/\b(?:no|not|nothing|none|nor|without|never|avoid|zero|sin|nunca)\b[^.,;:|]*/gi, " ");
+
+const slideTexts =(s) => [s.eyebrow, s.title1, s.title2, s.subtitle, s.big, s.bigLabel].filter(Boolean);
 
 /** plan = JSON de Gemini. ctx = { kb, roles, layouts, topic, recent, materials }. Devuelve { ok, problems[] }. */
 export function validatePlan(plan, ctx) {
@@ -66,8 +69,8 @@ export function validatePlan(plan, ctx) {
     const sc = s.scene ?? {};
     if (!kb.materialByName.has(sc.stone_material)) p.push(`${tag}: scene.stone_material debe ser uno de: ${kb.materials.map((m) => m.nombre).join(", ")}.`);
     if (layouts[i] !== "C" && layouts[i] !== "G") for (const k of ["space", "furniture_and_materials", "light", "camera", "stone_application"]) if (!sc[k] || String(sc[k]).length < 4) p.push(`${tag}: falta scene.${k}.`);
-    if (/\b(personas?|people|man|woman|mujer|hombre|ni[ñn]os?)\b/i.test(JSON.stringify(sc))) p.push(`${tag}: la escena no debe incluir personas.`);
-    if (/\b(open door|open doors|puerta abierta|edge of the slab|slab edge|thick|cantos?)\b/i.test(JSON.stringify(sc))) p.push(`${tag}: la escena no puede mostrar cantos ni espesor (regla de realismo).`);
+    if (/\b(personas?|people|persons?|man|woman|mujer|hombre|ni[ñn]os?|children|child)\b/i.test(stripNegations(sc))) p.push(`${tag}: la escena no debe incluir personas.`);
+    if (/\b(open door|open doors|puerta abierta|edge of the slab|slab edge|thick|cantos?)\b/i.test(stripNegations(sc))) p.push(`${tag}: la escena no puede mostrar cantos ni espesor (regla de realismo).`);
   });
 
   const all = [c.problem, c.solution, c.cta_question, ...(c.bullets ?? []), ...plan.slides.flatMap(slideTexts)].filter(Boolean).join("\n");

@@ -59,6 +59,14 @@ test("rechaza escenas con personas, cantos o espesor visible", () => {
   assert.ok(!validatePlan(p, ctx()).ok);
 });
 
+test("las escenas que NIEGAN personas o cantos son válidas («no people», «no visible slab edges»)", () => {
+  const p = good();
+  p.slides[0].scene.furniture_and_materials = "warm oak sideboard, no people, no visible slab edges, nothing thick or open";
+  assert.deepEqual(validatePlan(p, ctx()).problems, []);
+  p.slides[0].scene.furniture_and_materials = "warm oak sideboard with a man standing nearby";
+  assert.ok(!validatePlan(p, ctx()).ok);
+});
+
 test("el layout C exige dato grande y los materiales deben ser del catálogo", () => {
   let p = good();
   delete p.slides[1].big;
