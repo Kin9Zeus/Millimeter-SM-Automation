@@ -19,7 +19,7 @@ export function buildPhotoPrompt(slide, kb) {
   if (slide.layout === "C" || slide.layout === "G" || slide.macroFallback) {
     return [
       `${STYLE}`,
-      `SUBJECT: extreme close-up of ${mat.nombre} natural ${mat.tipo === "travertino" ? "travertine" : "marble"}: ${mat.look}. One continuous polished-or-honed surface.`,
+      `SUBJECT: extreme close-up of ${mat.nombre} natural ${mat.tipo === "travertino" ? "travertine" : "marble"}: ${mat.look}. One continuous surface filling the entire frame. Only the stone itself: no room, no furniture, no fixtures, no objects, no surroundings.`,
       `COMPOSITION: ${brief}`,
       REALISM_RULES, NO_TEXT, PALETTE,
     ].join("\n\n");
@@ -43,7 +43,7 @@ function qaPrompt(layout) {
 4. La piedra aparece doblada, plegada, enrollada, levantada como papel o flotando.
 5. Hay personas, manos o figuras deformes.
 6. Objetos claramente deformes o físicamente imposibles (muebles fusionados, geometría rota, perspectiva imposible, reflejos incoherentes). Detalles menores NO cuentan.
-${layout === "E" ? "7. La franja superior (30 % de la altura) NO es una zona clara, despejada y lisa donde pueda ponerse texto oscuro.\n" : ""}${layout === "A" ? "7. El tercio inferior tiene detalles importantes o muy cargados (se cubrirá con un degradado oscuro y texto).\n" : ""}Responde SOLO JSON: {"ok": true|false, "issues": ["falla concreta y cómo corregirla en el prompt, en inglés"]}`;
+${layout === "C" || layout === "G" ? "7. NO es una textura pura de piedra a cuadro completo (se ve una habitación, mueble, grifo, objeto, borde o fondo).\n" : ""}${layout === "E" ? "7. La franja superior (30 % de la altura) NO es una zona clara, despejada y lisa donde pueda ponerse texto oscuro.\n" : ""}${layout === "A" ? "7. El tercio inferior tiene detalles importantes o muy cargados (se cubrirá con un degradado oscuro y texto).\n" : ""}Responde SOLO JSON: {"ok": true|false, "issues": ["falla concreta y cómo corregirla en el prompt, en inglés"]}`;
 }
 
 export async function inspectPhoto(buffer, layout) {
