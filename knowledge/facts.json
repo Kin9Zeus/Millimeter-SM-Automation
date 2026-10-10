@@ -1,0 +1,67 @@
+{
+  "_meta": {
+    "fuentes": [
+      "Brochure oficial «MILLIMETER by Casanova» (15 págs.)",
+      "https://www.millimetersouthamerica.com/",
+      "Bio oficial de @casanova_southamerica"
+    ],
+    "nota": "ÚNICA fuente de verdad del bot. Si un dato no está aquí, el bot no puede afirmarlo. Para ampliar el conocimiento, añade hechos validados por el cliente."
+  },
+  "facts": [
+    { "id": "concepto-1", "category": "concepto", "text": "MILLIMETER es un enfoque revolucionario de la piedra natural: transforma mármol, cuarcita, travertino y otros materiales naturales en superficies ultrafinas de 1 a 5 milímetros." },
+    { "id": "concepto-2", "category": "concepto", "text": "Con MILLIMETER la piedra puede curvarse de verdad, permite estructuras ligeras e integración perfecta en espacios de alto nivel. Es la misma piedra natural." },
+    { "id": "concepto-3", "category": "concepto", "text": "Lema oficial: «Un milímetro de piedra natural» y «Redefiniendo la piedra natural». Mensajes ancla de la marca: «Más superficie. Menos material.» y «Piedra natural hecha arte.»" },
+    { "id": "concepto-4", "category": "concepto", "text": "La piedra tradicional mide 2–3 cm de espesor; MILLIMETER mide 1–5 mm." },
+    { "id": "concepto-5", "category": "concepto", "text": "Un milímetro de piedra cubre lo que antes requería dos centímetros: es el mismo acabado de piedra natural con una fracción del espesor." },
+
+    { "id": "problema-1", "category": "contraste", "text": "Durante siglos la piedra impuso sus condiciones: demasiado pesada para estructuras modernas, instalación lenta y costosa, imposible de curvar o doblar y con alto riesgo de roturas en obra." },
+    { "id": "problema-2", "category": "contraste", "text": "MILLIMETER ofrece hasta 80–90 % menos de peso, instalación más rápida y segura, curvas y geometrías complejas y una manipulación más fácil y segura." },
+
+    { "id": "peso-1", "category": "peso", "text": "Piedra tradicional de 2 cm: 63–73 kg/m² (13–15 lb/ft²)." },
+    { "id": "peso-2", "category": "peso", "text": "MILLIMETER de 5 mm: 15–20 kg/m² (3–4 lb/ft²)." },
+    { "id": "peso-3", "category": "peso", "text": "MILLIMETER de 1 mm: menos de 5 kg/m² (menos de 1 lb/ft²)." },
+    { "id": "peso-4", "category": "peso", "text": "Misma piedra, mismo acabado: entre un 73 % y un 93 % menos de carga sobre la estructura. La estructura deja de ser el límite." },
+    { "id": "peso-5", "category": "peso", "text": "Especificaciones técnicas: espesor de 1 a 5 mm; reducción de peso de 80 a 90 %; formatos a medida disponibles; la curvatura es flexible según el material." },
+
+    { "id": "app-1", "category": "aplicacion", "text": "Ocho aplicaciones donde antes no cabía la piedra: muros decorativos, chimeneas, elementos arquitectónicos, grandes duchas, mobiliario a medida, puertas y paneles, superficies curvas y techos." },
+    { "id": "app-muros", "category": "aplicacion", "text": "Muros decorativos (5 mm): paneles de gran formato, pocas juntas y sin anclajes pesados." },
+    { "id": "app-chimeneas", "category": "aplicacion", "text": "Chimeneas (1 y 5 mm): piedra delgada sobre la estructura existente." },
+    { "id": "app-elementos", "category": "aplicacion", "text": "Elementos arquitectónicos (1 mm): arcos y columnas revestidos en una sola curva continua." },
+    { "id": "app-duchas", "category": "aplicacion", "text": "Grandes duchas (5 mm): menos juntas, por lo tanto menos filtraciones y menos silicona." },
+    { "id": "app-mobiliario", "category": "aplicacion", "text": "Mobiliario a medida (1 y 5 mm): frentes de piedra que realmente abren y cierran." },
+    { "id": "app-puertas", "category": "aplicacion", "text": "Puertas y paneles (5 mm): peso compatible con herrajes estándar." },
+    { "id": "app-curvas", "category": "aplicacion", "text": "Superficies curvas (1 mm): una curva real, no segmentos que la imitan." },
+    { "id": "app-techos", "category": "aplicacion", "text": "Techos (5 mm): viables solo a 15–20 kg/m², no a 63–73." },
+
+    { "id": "materiales-1", "category": "material", "text": "Catálogo de 12 piedras: Bianco Carrara, Calacatta Venatina, Nero Marquina, Dark Emperador, Cream Travertine, Pietra Grey, Sahara Noir, Verdi Alpi, Dark Rosa Portugues, Rojo Levante, Nidali y Cappuccino. La misma piedra, sin el espesor." },
+    { "id": "materiales-2", "category": "material", "text": "Cream Travertine es un travertino. Calacatta Viola es un mármol usado en un proyecto en San Diego." },
+
+    { "id": "salud-1", "category": "salud", "text": "MILLIMETER contiene menos de 0,5 % de sílice. El cuarzo de ingeniería contiene entre 10 y 40 % de sílice (varía según el fabricante). Cifras: MILLIMETER Global LLC." },
+    { "id": "salud-2", "category": "salud", "text": "El polvo de sílice de las superficies de ingeniería es un riesgo serio para la salud de quienes las cortan, fabrican e instalan. MILLIMETER promueve un entorno de trabajo más seguro para diseñadores, fabricantes e instaladores." },
+    { "id": "salud-3", "category": "salud", "text": "Ventajas de salud y manejo: piedra 100 % natural, menor exposición a la sílice, menos resinas artificiales y manipulación más segura." },
+
+    { "id": "huella-1", "category": "huella", "text": "Con 1 a 5 milímetros en lugar de 2 o 3 centímetros, cada metro cuadrado pesa hasta un 90 % menos. La huella de carbono empieza por el espesor." },
+    { "id": "huella-2", "category": "huella", "text": "Menos espesor, menos huella en cuatro frentes: transporte (envíos más ligeros y menos energía para moverlos), embalaje (piezas más delgadas y ligeras necesitan menos material y ocupan menos volumen), medios mecánicos (menos peso requiere equipos de elevación y anclajes más ligeros, en taller y en obra) y material por m² (un milímetro cubre lo que antes requería dos centímetros)." },
+
+    { "id": "proyecto-1", "category": "proyecto", "text": "MILLIMETER colabora con arquitectos, diseñadores y clientes privados en todo el mundo, con soluciones a medida para proyectos residenciales y comerciales de alto nivel." },
+    { "id": "proyecto-wittman", "category": "proyecto", "text": "Wittman Residence (Austin, TX, EE. UU.): tocador flotante curvo en Cream Travertine, 1 mm + 5 mm, acabado mate (honed). Puerta curva de 1 mm, lavamanos integrado de 5 mm, cantos de 1 mm y cajones de 1 mm." },
+    { "id": "proyecto-arco", "category": "proyecto", "text": "Arco de mármol (San Diego, CA, EE. UU.): Calacatta Viola, 1 mm + 2 cm." },
+    { "id": "proyecto-altuve", "category": "proyecto", "text": "Altuve Residence (Houston, TX, EE. UU.): mueble en Dark Emperador de 5 mm." },
+    { "id": "proyecto-latam", "category": "proyecto", "text": "MILLIMETER by Casanova tiene proyectos en Colombia, Argentina, Perú y Brasil (según la bio oficial de la cuenta de Instagram)." },
+    { "id": "proyecto-planos", "category": "proyecto", "text": "El trabajo incluye planos de taller (shop drawings) y planos constructivos para cada proyecto." },
+
+    { "id": "contacto-1", "category": "contacto", "text": "Cuéntanos qué estás diseñando: con planos, referencias o un boceto a mano basta para decirte si MILLIMETER es el material adecuado y con qué espesor. Contacto: info@millimeterbycasanova.com" },
+    { "id": "contacto-2", "category": "contacto", "text": "Sitio web oficial: www.millimetersouthamerica.com. MILLIMETER Global LLC tiene su oficina central en Houston, Texas, EE. UU." },
+    { "id": "contacto-3", "category": "contacto", "text": "Para Sudamérica, un arquitecto revisa los detalles constructivos antes de cotizar y la respuesta llega en menos de 24 horas hábiles." }
+  ],
+  "no_afirmar": [
+    "Precios, descuentos, promociones o plazos de entrega",
+    "Formatos o dimensiones concretas de las láminas (solo se sabe que hay «formatos a medida»)",
+    "Certificaciones, normas, ensayos o garantías",
+    "Resistencia, dureza, impermeabilidad, resistencia al fuego o a manchas",
+    "Instrucciones de instalación o de mantenimiento",
+    "Clientes, testimonios o proyectos que no estén en la lista de proyectos",
+    "Acabados distintos a los citados en los hechos",
+    "Que un material específico del catálogo se vea de una forma concreta"
+  ]
+}
