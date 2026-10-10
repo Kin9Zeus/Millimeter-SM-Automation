@@ -24,21 +24,22 @@ async function assertPubliclyReachable(url) {
  * Pipeline diario idempotente: cada etapa guarda su resultado en state.json, así un reinicio o reintento
  * continúa donde quedó y NUNCA regenera (ni cobra) lo ya hecho, ni publica dos veces.
  */
-export async function runDaily({ dry = cfg.dryRun, force = false, count } = {}) {
+export async function runDaily({ dry = cfg.dryRun, force = false, count, extra = false } = {}) {
   if (running) return { skipped: "ya hay una ejecución en curso" };
   const missing = missingConfig({ forPublishing: !dry });
   if (missing.length) throw new Error(`Faltan variables de entorno: ${missing.join(", ")}`);
 
   running = true;
   const { date } = localParts();
-  const key = dry ? `dry-${date}-${Date.now()}` : date;
+  // extra = publicación adicional el mismo día (forzada a mano): clave propia, no toca la del día ni su límite.
+  const key = dry ? `dry-${date}-${Date.now()}` : extra ? `${date}-extra-${Date.now()}` : date;
   try {
     const state = loadState();
     let entry = state.posts[key];
     if (entry?.status === "published") return { skipped: "hoy ya se publicó", mediaId: entry.mediaId };
     if (!force && !dry && (entry?.attempts ?? 0) >= cfg.maxAttemptsPerDay) return { skipped: "se agotaron los intentos de hoy" };
 
-    entry = updatePost(key, { attempts: (entry?.attempts ?? 0) + 1, lastAttemptAt: new Date().toISOString(), dry, lastError: null });
+    entry = updatePost(key, { attempts: (entry?.attempts ?? 0) + 1, lastAttemptAt: new Date().toISOString(), dry, extra, date, lastError: null });
     log(`▶ Pipeline ${dry ? "(DRY RUN) " : ""}${key} · intento ${entry.attempts}`);
 
     if (!dry) await ensureTokenFresh();
@@ -47,7 +48,7 @@ export async function runDaily({ dry = cfg.dryRun, force = false, count } = {}) 
 
     // 1) Plan del día: formato (1 imagen o carrusel de 3–6), tema, layouts, textos, escenas y caption.
     if (!entry.slides) {
-      const plan = await createDailyPlan(date, { count: dry ? count : undefined });
+      const plan = await createDailyPlan(date, { count: dry ? count : undefined, seed: key });
       entry = updatePost(key, { ...plan, status: "plan_ready" });
     }
 

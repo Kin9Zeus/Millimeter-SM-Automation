@@ -106,15 +106,16 @@ async function critique(plan, caption, kb) {
 }
 
 /** Plan completo del día: formato aleatorio, tema, layouts, textos de cada pieza, escenas y caption. */
-export async function createDailyPlan(date, { count: forcedCount } = {}) {
+export async function createDailyPlan(date, { count: forcedCount, seed } = {}) {
+  const s = seed ?? date; // semilla de las decisiones de diseño: por defecto la fecha; una publicación extra usa su propia clave
   const kb = loadKnowledge();
   const posts = loadState().posts;
-  const chosen = chooseFormat(date);
+  const chosen = chooseFormat(s);
   const count = forcedCount ?? chosen.count; // forcedCount solo se usa en ensayos
   const format = count === 1 ? "single" : "carousel";
-  const { topic, repeated } = chooseTopic(kb, posts, date);
+  const { topic, repeated } = chooseTopic(kb, posts, s);
   const roles = rolesFor(count);
-  const layouts = chooseLayouts(roles, posts, date);
+  const layouts = chooseLayouts(roles, posts, s);
   const recent = Object.values(posts).filter((p) => p.status === "published").sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 12);
   const avoidMaterials = recentMaterials(posts);
   log(`Plan: ${format} de ${count} · tema «${topic.titulo}»${repeated ? " (ángulo nuevo)" : ""} · layouts ${layouts.join("")}`);

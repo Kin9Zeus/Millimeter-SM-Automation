@@ -49,7 +49,7 @@ const server = createServer(async (req, res) => {
         const dry = url.searchParams.get("dry") === "1";
         const force = url.searchParams.get("force") === "1";
         if (isRunning()) return json(res, 409, { error: "already_running" });
-        runDaily({ dry, force, count: Number(url.searchParams.get("count")) || undefined }).then((r) => log("admin/run OK", r)).catch((e) => logError("admin/run falló:", e.message));
+        runDaily({ dry, force, extra: url.searchParams.get("extra") === "1", count: Number(url.searchParams.get("count")) || undefined }).then((r) => log("admin/run OK", r)).catch((e) => logError("admin/run falló:", e.message));
         return json(res, 202, { accepted: true, dry, hint: "Sigue el progreso en GET /admin/status o en los logs." });
       }
     }
