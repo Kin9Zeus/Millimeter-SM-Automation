@@ -4,7 +4,10 @@ import { timingSafeEqual } from "node:crypto";
 import { join } from "node:path";
 import { cfg, localParts, log, logError, missingConfig } from "./config.mjs";
 import { imagesDir } from "./image.mjs";
+import { handleMessage } from "./commands.mjs";
 import { housekeeping, isRunning, runDaily, tick } from "./pipeline.mjs";
+import { isPaused } from "./runtime.mjs";
+import { linkedChats, startPolling, stopPolling } from "./telegram.mjs";
 import { loadState } from "./state.mjs";
 
 const json = (res, status, body) => {
@@ -41,7 +44,7 @@ const server = createServer(async (req, res) => {
         const s = loadState();
         const posts = Object.values(s.posts).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 10)
           .map(({ date, status, topic, format, count, attempts, imageGenerations, lastError, permalink, dry, slides }) => ({ date, status, topic, format, count, attempts, imageGenerations, lastError, permalink, dry, layouts: slides?.map((x) => x.layout).join(""), images: slides?.filter((x) => x.composedFile).map((x) => `/media/${x.composedFile}`) }));
-        return json(res, 200, { now: localParts(), paused: cfg.paused, dryRun: cfg.dryRun, running: isRunning(), missingConfig: missingConfig(), tokenExpiresAt: s.token?.expiresAt ?? null, posts });
+        return json(res, 200, { now: localParts(), paused: isPaused(), telegramChats: Object.keys(linkedChats()).length, dryRun: cfg.dryRun, running: isRunning(), missingConfig: missingConfig(), tokenExpiresAt: s.token?.expiresAt ?? null, posts });
       }
 
       // POST /admin/run?dry=1  → ensayo sin publicar · POST /admin/run → corre el pipeline de hoy ahora
@@ -67,6 +70,7 @@ server.listen(cfg.port, () => {
 });
 
 // Scheduler: latido cada 5 min. El propio pipeline decide si ya toca y evita duplicar.
+startPolling(handleMessage); // órdenes por Telegram (long polling)
 setTimeout(() => { tick(); housekeeping(); }, 15_000);
 const heartbeat = setInterval(tick, cfg.tickEveryMs);
 const cleaner = setInterval(housekeeping, 24 * 3600 * 1000);
@@ -74,6 +78,7 @@ const cleaner = setInterval(housekeeping, 24 * 3600 * 1000);
 for (const sig of ["SIGTERM", "SIGINT"]) {
   process.on(sig, () => {
     log(`${sig}: cerrando…`);
+    stopPolling();
     clearInterval(heartbeat);
     clearInterval(cleaner);
     server.close(() => process.exit(0));

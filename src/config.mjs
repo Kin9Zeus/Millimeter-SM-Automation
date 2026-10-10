@@ -41,7 +41,12 @@ export const cfg = {
     igUserId: env.META_IG_USER_ID || "",
     apiVersion: env.META_API_VERSION || "v22.0",
   },
-  telegram: { token: env.TELEGRAM_BOT_TOKEN || "", chatId: env.TELEGRAM_CHAT_ID || "" },
+  telegram: {
+    token: env.TELEGRAM_BOT_TOKEN || "",
+    chatId: env.TELEGRAM_CHAT_ID || "", // opcional: chat extra que solo recibe avisos
+    linkCode: env.TELEGRAM_LINK_CODE || "", // código secreto para /vincular (sin él nadie puede dar órdenes)
+    maxChats: int(env.TELEGRAM_MAX_CHATS, 4),
+  },
 };
 
 export function missingConfig({ forPublishing = true } = {}) {

@@ -52,3 +52,25 @@ export function shouldAlert(key, minHours = 24) {
   saveState();
   return true;
 }
+
+// ---------- Cola de ideas del cliente (se consume una por publicación programada) ----------
+import { randomBytes } from "node:crypto";
+
+export const listIdeas = () => loadState().queue ?? [];
+
+export function addIdea(text, by) {
+  const s = loadState();
+  s.queue ??= [];
+  const idea = { id: randomBytes(3).toString("hex"), text, by, at: new Date().toISOString() };
+  s.queue.push(idea);
+  saveState();
+  return idea;
+}
+
+export function removeIdea(id) {
+  const s = loadState();
+  const before = (s.queue ?? []).length;
+  s.queue = (s.queue ?? []).filter((i) => i.id !== id);
+  saveState();
+  return before !== s.queue.length;
+}

@@ -63,7 +63,30 @@ Ver [`.env.example`](.env.example). **Este repo es público: jamás subas claves
 | `MAX_IMAGES_PER_DAY` | no | Tope duro de imágenes generadas por día (18) |
 | `TZ_NAME`, `POST_HOUR`, `POST_MINUTE` | no | Por defecto `America/Bogota`, 10:00 |
 | `PAUSED`, `DRY_RUN` | no | Interruptor de emergencia / modo ensayo |
-| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` | no | Avisos |
+| `TELEGRAM_BOT_TOKEN`, `TELEGRAM_LINK_CODE` | no | Control y avisos por Telegram (ver abajo) |
+| `TELEGRAM_MAX_CHATS`, `TELEGRAM_CHAT_ID` | no | Máx. de chats vinculados (4) · chat extra solo de avisos |
+
+## Control por Telegram
+El cliente da órdenes al bot desde un chat privado (sin aprobación de posts: solo órdenes). Los mismos chats reciben los avisos de cada publicación.
+
+| Comando | Qué hace |
+|---|---|
+| `/estado` | Qué se publicó hoy, qué viene, ideas en cola, gasto de imágenes y estado del token |
+| `/forzar` · `/forzar <idea>` | Publica un post extra ahora (2–5 min); con idea, sobre ese tema |
+| `/idea <texto>` | Encola una idea: se usa en la siguiente publicación programada (una por día) |
+| `/ideas` · `/borrar_idea <n>` | Ver / quitar ideas de la cola |
+| `/previa` | Genera un borrador **sin publicar** y lo envía al chat |
+| `/pausar` · `/reanudar` | Detiene / reactiva las publicaciones automáticas (`/forzar` sigue funcionando) |
+| `/hora HH:MM` | Cambia la hora diaria |
+| `/usuarios` · `/quitar <n>` · `/desvincular` | Gestionar quién puede dar órdenes |
+
+**Las ideas pasan por las mismas barreras** (base oficial, validación, auditor, inspector de imágenes). Si una idea no se puede convertir en un post válido, el bot avisa el motivo y publica un tema automático.
+
+**Poner en marcha:** 1) crea el bot con [@BotFather](https://t.me/BotFather) (`/newbot`) y guarda su token en `TELEGRAM_BOT_TOKEN`; 2) define `TELEGRAM_LINK_CODE` (un secreto largo); 3) en Telegram abre el bot y envía `/vincular <código>`.
+
+**Pasarlo al cliente:** el cliente abre el bot y envía `/vincular <código>` → luego quita tu chat con `/quitar` (o `/desvincular` desde tu chat) y **cambia `TELEGRAM_LINK_CODE`** en Railway para invalidar el código usado. Para otro bot (p. ej. uno a nombre del cliente), solo cambia `TELEGRAM_BOT_TOKEN`.
+
+**Seguridad:** solo chats privados que enviaron el código correcto (5 intentos fallidos por hora y chat); el bot usa *long polling* (sin URL ni webhook expuestos); el token nunca aparece en logs ni errores. Sin `TELEGRAM_BOT_TOKEN` los comandos quedan desactivados.
 
 ## Despliegue en Railway
 1. Railway → **New Project → Deploy from GitHub repo** → este repositorio.

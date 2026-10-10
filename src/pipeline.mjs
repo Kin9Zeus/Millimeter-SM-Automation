@@ -1,4 +1,5 @@
-import { cfg, isPastPostTime, localParts, log, logError, missingConfig } from "./config.mjs";
+import { cfg, localParts, log, logError, missingConfig } from "./config.mjs";
+import { isPastPostTime, isPaused } from "./runtime.mjs";
 import { composeSlide } from "./compose.mjs";
 import { createDailyPlan } from "./content.mjs";
 import { cleanupOldImages, readRaw, saveComposed, saveRaw } from "./image.mjs";
@@ -6,7 +7,7 @@ import { loadKnowledge } from "./knowledge.mjs";
 import { MetaError, createCarouselChild, createCarouselContainer, createImageContainer, ensureTokenFresh, findPublishedSince, getPermalink, publishContainer, waitForContainer } from "./meta.mjs";
 import { notify } from "./notify.mjs";
 import { BudgetError, generateCheckedPhoto } from "./photo.mjs";
-import { loadState, shouldAlert, updatePost } from "./state.mjs";
+import { listIdeas, loadState, removeIdea, shouldAlert, updatePost } from "./state.mjs";
 
 let running = false;
 export const isRunning = () => running;
@@ -24,7 +25,7 @@ async function assertPubliclyReachable(url) {
  * Pipeline diario idempotente: cada etapa guarda su resultado en state.json, así un reinicio o reintento
  * continúa donde quedó y NUNCA regenera (ni cobra) lo ya hecho, ni publica dos veces.
  */
-export async function runDaily({ dry = cfg.dryRun, force = false, count, extra = false } = {}) {
+export async function runDaily({ dry = cfg.dryRun, force = false, count, extra = false, idea: ideaText } = {}) {
   if (running) return { skipped: "ya hay una ejecución en curso" };
   const missing = missingConfig({ forPublishing: !dry });
   if (missing.length) throw new Error(`Faltan variables de entorno: ${missing.join(", ")}`);
@@ -48,8 +49,23 @@ export async function runDaily({ dry = cfg.dryRun, force = false, count, extra =
 
     // 1) Plan del día: formato (1 imagen o carrusel de 3–6), tema, layouts, textos, escenas y caption.
     if (!entry.slides) {
-      const plan = await createDailyPlan(date, { count: dry ? count : undefined, seed: key });
-      entry = updatePost(key, { ...plan, status: "plan_ready" });
+      // Idea del cliente: la que viene en la orden (/forzar, /previa) o, en la publicación programada, la primera de la cola.
+      const queued = !ideaText && !dry && !extra ? listIdeas()[0] : null;
+      const idea = ideaText ?? queued?.text;
+      const planOpts = { count: dry ? count : undefined, seed: key };
+      let plan;
+      try {
+        plan = await createDailyPlan(date, { ...planOpts, idea });
+      } catch (e) {
+        if (!idea) throw e;
+        // La idea no se pudo convertir en un post válido (datos que no están en la base oficial, etc.): se avisa y se publica un tema automático.
+        await notify(`⚠️ No pude convertir tu idea en un post válido: «${idea.slice(0, 120)}».\nMotivo: ${String(e.message).split("\n").slice(1).join(" ").slice(0, 400) || e.message.slice(0, 300)}\nPublico un tema automático para no perder el día.`);
+        plan = await createDailyPlan(date, planOpts);
+        if (queued) removeIdea(queued.id);
+        entry = updatePost(key, { ideaRejected: idea });
+      }
+      if (queued && !entry.ideaRejected) removeIdea(queued.id);
+      entry = updatePost(key, { ...plan, ideaText: idea && !entry.ideaRejected ? idea : null, status: "plan_ready" });
     }
 
     // 2) Piezas: foto sin texto (Nano Banana Pro) → inspección de calidad → composición con la tipografía de marca.
@@ -84,7 +100,7 @@ export async function runDaily({ dry = cfg.dryRun, force = false, count, extra =
 
     if (dry) {
       entry = updatePost(key, { status: "dry_run" });
-      await notify(`🧪 DRY RUN — no se publicó.\nFormato: ${entry.format === "single" ? "1 imagen" : `carrusel de ${entry.count}`} · Tema: ${entry.topic}\n\n${entry.caption}`, { photoUrl: cfg.publicBaseUrl ? urls[0] : undefined });
+      await notify(`🧪 DRY RUN — no se publicó.\nFormato: ${entry.format === "single" ? "1 imagen" : `carrusel de ${entry.count}`} · Tema: ${entry.topic}\n\n${entry.caption}`, { photoUrls: cfg.publicBaseUrl ? urls : undefined });
       return { dryRun: true, format: entry.format, count: entry.count, topic: entry.topic, layouts: slides.map((s) => s.layout), caption: entry.caption, files: slides.map((s) => s.composedFile) };
     }
 
@@ -126,7 +142,7 @@ export async function runDaily({ dry = cfg.dryRun, force = false, count, extra =
     const permalink = await getPermalink(mediaId);
     entry = updatePost(key, { status: "published", mediaId, permalink, publishedAt: new Date().toISOString() });
 
-    await notify(`✅ Publicado en Instagram (${entry.format === "single" ? "1 imagen" : `carrusel de ${entry.count}`})\nTema: ${entry.topic}\n${permalink ?? mediaId}`, { photoUrl: urls[0] });
+    await notify(`✅ Publicado en Instagram (${entry.format === "single" ? "1 imagen" : `carrusel de ${entry.count}`})\nTema: ${entry.topic}\n${permalink ?? mediaId}`, { photoUrls: urls });
     return { published: true, mediaId, permalink, format: entry.format, count: entry.count };
   } catch (err) {
     const entry = loadState().posts[key];
@@ -155,7 +171,7 @@ export async function tick() {
         await notify(`⚠️ El token de Instagram vence en ${t.daysLeft} días y la renovación automática no ha funcionado. Genera uno nuevo y actualiza META_ACCESS_TOKEN.`);
       }
     }
-    if (cfg.paused) return;
+    if (isPaused()) return;
     const { date } = localParts();
     const entry = loadState().posts[date];
     if (!isPastPostTime() || entry?.status === "published") return;
