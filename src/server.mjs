@@ -40,7 +40,7 @@ const server = createServer(async (req, res) => {
       if (req.method === "GET" && url.pathname === "/admin/status") {
         const s = loadState();
         const posts = Object.values(s.posts).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 10)
-          .map(({ date, status, topic, format, count, attempts, imageGenerations, lastError, permalink, dry }) => ({ date, status, topic, format, count, attempts, imageGenerations, lastError, permalink, dry }));
+          .map(({ date, status, topic, format, count, attempts, imageGenerations, lastError, permalink, dry, slides }) => ({ date, status, topic, format, count, attempts, imageGenerations, lastError, permalink, dry, layouts: slides?.map((x) => x.layout).join(""), images: slides?.filter((x) => x.composedFile).map((x) => `/media/${x.composedFile}`) }));
         return json(res, 200, { now: localParts(), paused: cfg.paused, dryRun: cfg.dryRun, running: isRunning(), missingConfig: missingConfig(), tokenExpiresAt: s.token?.expiresAt ?? null, posts });
       }
 
