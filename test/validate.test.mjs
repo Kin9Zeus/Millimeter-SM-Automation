@@ -6,8 +6,8 @@ import { buildCaption, validatePlan } from "../src/validate.mjs";
 
 const kb = loadKnowledge();
 
-const scene = { stone_material: "Dark Emperador", stone_application: "TV wall", space: "bright living room with large windows", furniture_and_materials: "warm oak sideboard and boucle armchair", light: "warm late afternoon sun", camera: "35mm lens, straight-on" };
-const slide = (over = {}) => ({ eyebrow: "Muros decorativos · 5 mm", title1: "El muro que", title2: "se roba la sala.", subtitle: "Paneles de gran formato en piedra natural.", alt_text: "Sala con un muro de mármol oscuro de una sola pieza.", scene, ...over });
+const mkScene = () => ({ stone_material: "Dark Emperador", stone_application: "TV wall", space: "bright living room with large windows", furniture_and_materials: "warm oak sideboard and boucle armchair", light: "warm late afternoon sun", camera: "35mm lens, straight-on" });
+const slide = (over = {}) => ({ eyebrow: "Muros decorativos · 5 mm", title1: "El muro que", title2: "se roba la sala.", subtitle: "Paneles de gran formato en piedra natural.", alt_text: "Sala con un muro de mármol oscuro de una sola pieza.", scene: mkScene(), ...over });
 const good = () => ({
   angle: "El muro de TV como protagonista de la sala",
   fact_ids: ["app-muros", "peso-1", "peso-2"],
