@@ -10,7 +10,8 @@ const isModelMissing = (err) => err?.status === 404 || /not found|NOT_FOUND|is n
 
 /** Texto → JSON. Prueba los modelos candidatos hasta que la API acepte uno y recuerda el que funcionó. */
 export async function generateJson({ system, prompt, temperature = 0.9 }) {
-  const candidates = workingTextModel ? [workingTextModel] : cfg.gemini.textModelCandidates;
+  // El modelo configurado/probado va primero; si deja de existir, se cae a los candidatos en vez de romper el pipeline.
+  const candidates = [...new Set([workingTextModel, ...cfg.gemini.textModelCandidates].filter(Boolean))];
   let lastErr;
   for (const model of candidates) {
     try {
@@ -25,6 +26,7 @@ export async function generateJson({ system, prompt, temperature = 0.9 }) {
     } catch (err) {
       lastErr = err;
       if (!isModelMissing(err)) throw err;
+      if (model === workingTextModel) workingTextModel = null;
     }
   }
   throw new Error(`Ningún modelo de texto disponible (${candidates.join(", ")}). Define GEMINI_TEXT_MODEL. Último error: ${lastErr?.message}`);
