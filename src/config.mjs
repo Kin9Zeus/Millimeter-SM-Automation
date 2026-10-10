@@ -47,7 +47,6 @@ export function missingConfig({ forPublishing = true } = {}) {
   if (!cfg.gemini.apiKey) miss.push("GEMINI_API_KEY");
   if (forPublishing) {
     if (!cfg.meta.token) miss.push("META_ACCESS_TOKEN");
-    if (!cfg.meta.igUserId) miss.push("META_IG_USER_ID");
     if (!cfg.publicBaseUrl) miss.push("PUBLIC_BASE_URL (o RAILWAY_PUBLIC_DOMAIN)");
   }
   return miss;

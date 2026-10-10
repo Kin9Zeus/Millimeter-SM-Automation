@@ -26,5 +26,5 @@ export const PILLARS = [
 export const IMAGE_KINDS = {
   textura: "Macro abstracto de una superficie de piedra natural clara: vetas, luz rasante, grano. Genérica; NO intenta reproducir ningún mármol o travertino del catálogo por nombre.",
   concepto: "Ilustración editorial minimalista y limpia que muestra visualmente la idea de «delgado vs. grueso» (una lámina finísima de piedra frente a un bloque grueso, secciones, curvas suaves). Sin texto, sin números, sin etiquetas.",
-  atmosfera: "Estudio de luz y sombra sobre superficies de piedra clara, curvas suaves, arquitectura silenciosa. Sin un espacio, mueble o proyecto reconocible y sin pretender ser un trabajo real.",
+  atmosfera: "Primer plano o recorte cerrado de una superficie continua de piedra clara con curvas suaves y luz cálida rasante. SOLO la superficie de piedra y su luz: sin habitación, escalera, ventanas, muebles, herrajes, metales ni ningún contexto arquitectónico reconocible.",
 };

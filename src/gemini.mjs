@@ -41,13 +41,13 @@ export function parseJson(text) {
   }
 }
 
-/** Imagen con Nano Banana Pro (misma API «interactions» que usa scripts/gemini-image.mjs del estudio). */
+/** Imagen con Nano Banana Pro (la API solo entrega image/jpeg; misma API «interactions» que usa scripts/gemini-image.mjs del estudio). */
 export async function generateImage(prompt) {
   const { imageModel, imageAspect, imageSize } = cfg.gemini;
   const interaction = await getClient().interactions.create({
     model: imageModel,
     input: prompt,
-    response_format: { type: "image", mime_type: "image/png", aspect_ratio: imageAspect, image_size: imageSize },
+    response_format: { type: "image", mime_type: "image/jpeg", aspect_ratio: imageAspect, image_size: imageSize },
   });
   const data = interaction.output_image?.data;
   if (!data) throw new Error(`Gemini no devolvió imagen: ${JSON.stringify(interaction).slice(0, 400)}`);

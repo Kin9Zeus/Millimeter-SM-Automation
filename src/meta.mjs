@@ -43,10 +43,19 @@ async function call(path, { method = "GET", params = {}, base = host() } = {}) {
   return json;
 }
 
+let cachedId = null;
+/** ID de la cuenta profesional, deducido del propio token (evita errores al copiar META_IG_USER_ID a mano). */
+export async function igId() {
+  if (cachedId) return cachedId;
+  const me = await call("/me", { params: { fields: "user_id,username" } });
+  if (cfg.meta.igUserId && cfg.meta.igUserId !== String(me.user_id)) logError("META_IG_USER_ID no coincide con la cuenta del token; se usa el del token (" + me.username + "). Puedes borrar esa variable.");
+  return (cachedId = String(me.user_id));
+}
+
 export async function createImageContainer({ imageUrl, caption, altText }) {
   const params = { image_url: imageUrl, caption, is_ai_generated: "true" };
   if (altText) params.alt_text = altText;
-  const r = await call(`/${cfg.meta.igUserId}/media`, { method: "POST", params });
+  const r = await call(`/${await igId()}/media`, { method: "POST", params });
   return r.id;
 }
 
@@ -62,7 +71,7 @@ export async function waitForContainer(id, { timeoutMs = 5 * 60 * 1000 } = {}) {
 }
 
 export async function publishContainer(id) {
-  const r = await call(`/${cfg.meta.igUserId}/media_publish`, { method: "POST", params: { creation_id: id } });
+  const r = await call(`/${await igId()}/media_publish`, { method: "POST", params: { creation_id: id } });
   return r.id;
 }
 
@@ -75,7 +84,7 @@ export async function getPermalink(mediaId) {
 }
 
 export async function getQuota() {
-  return call(`/${cfg.meta.igUserId}/content_publishing_limit`, { params: { fields: "config,quota_usage" } });
+  return call(`/${await igId()}/content_publishing_limit`, { params: { fields: "config,quota_usage" } });
 }
 
 // ---------- Renovación del token de larga duración (60 días) ----------
@@ -113,7 +122,7 @@ const daysLeft = (t) => (t.expiresAt ? Math.floor((Date.parse(t.expiresAt) - Dat
 
 /** Anti-duplicados: tras un fallo ambiguo al publicar, busca si el post ya salió (misma cabecera de caption, posterior a `sinceIso`). */
 export async function findPublishedSince(sinceIso, captionHead) {
-  const r = await call(`/${cfg.meta.igUserId}/media`, { params: { fields: "id,caption,timestamp,permalink", limit: "10" } });
+  const r = await call(`/${await igId()}/media`, { params: { fields: "id,caption,timestamp,permalink", limit: "10" } });
   const since = Date.parse(sinceIso) - 60_000;
   return (r.data ?? []).find((m) => Date.parse(m.timestamp) >= since && (m.caption ?? "").startsWith(captionHead)) ?? null;
 }

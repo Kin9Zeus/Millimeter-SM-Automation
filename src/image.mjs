@@ -12,7 +12,7 @@ const GUARDRAILS =
   "Editorial luxury architecture-magazine aesthetic, warm natural light, generous negative space, calm and refined. " +
   `Color palette: ${PALETTE}. ` +
   "STRICT: absolutely no text, letters, numbers, logos, watermarks or captions anywhere in the image; no people or hands; " +
-  "do not depict any specific real project, building, room or product; generic natural stone only.";
+  "do not depict any specific real project, building, room, staircase, furniture or product; no metal fixtures, handrails, hardware, windows or doors; tight crop on the stone surface itself, no architectural context; generic natural stone only.";
 
 export const imagesDir = () => {
   const d = join(cfg.dataDir, "images");
@@ -22,12 +22,13 @@ export const imagesDir = () => {
 
 const MAX_BYTES = 7.5 * 1024 * 1024; // Meta acepta hasta 8 MB
 
-/** Genera con Nano Banana Pro (2K) y convierte a JPEG (Instagram no acepta PNG). Devuelve el nombre del archivo servido. */
+/** Genera con Nano Banana Pro (2K); Instagram solo acepta JPEG, que es lo que entrega la API. Devuelve el nombre del archivo servido. */
 export async function createDailyImage(date, imagePrompt) {
   const { buffer, model } = await generateImage(`${imagePrompt}\n\n${GUARDRAILS}`);
   let quality = 92;
-  let jpeg;
-  do {
+  let jpeg = buffer;
+  const isJpeg = buffer[0] === 0xff && buffer[1] === 0xd8;
+  if (!isJpeg || buffer.length > MAX_BYTES) do {
     jpeg = await sharp(buffer).flatten({ background: "#F3EEE6" }).jpeg({ quality, mozjpeg: true, chromaSubsampling: "4:4:4" }).toBuffer();
     quality -= 8;
   } while (jpeg.length > MAX_BYTES && quality > 50);
