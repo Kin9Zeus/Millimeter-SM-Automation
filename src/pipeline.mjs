@@ -1,8 +1,11 @@
 import { cfg, isPastPostTime, localParts, log, logError, missingConfig } from "./config.mjs";
-import { createDailyContent } from "./content.mjs";
-import { cleanupOldImages, createDailyImage } from "./image.mjs";
-import { MetaError, createImageContainer, ensureTokenFresh, findPublishedSince, getPermalink, publishContainer, waitForContainer } from "./meta.mjs";
+import { composeSlide } from "./compose.mjs";
+import { createDailyPlan } from "./content.mjs";
+import { cleanupOldImages, readRaw, saveComposed, saveRaw } from "./image.mjs";
+import { loadKnowledge } from "./knowledge.mjs";
+import { MetaError, createCarouselChild, createCarouselContainer, createImageContainer, ensureTokenFresh, findPublishedSince, getPermalink, publishContainer, waitForContainer } from "./meta.mjs";
 import { notify } from "./notify.mjs";
+import { BudgetError, generateCheckedPhoto } from "./photo.mjs";
 import { loadState, shouldAlert, updatePost } from "./state.mjs";
 
 let running = false;
@@ -21,7 +24,7 @@ async function assertPubliclyReachable(url) {
  * Pipeline diario idempotente: cada etapa guarda su resultado en state.json, así un reinicio o reintento
  * continúa donde quedó y NUNCA regenera (ni cobra) lo ya hecho, ni publica dos veces.
  */
-export async function runDaily({ dry = cfg.dryRun, force = false } = {}) {
+export async function runDaily({ dry = cfg.dryRun, force = false, count } = {}) {
   if (running) return { skipped: "ya hay una ejecución en curso" };
   const missing = missingConfig({ forPublishing: !dry });
   if (missing.length) throw new Error(`Faltan variables de entorno: ${missing.join(", ")}`);
@@ -40,27 +43,52 @@ export async function runDaily({ dry = cfg.dryRun, force = false } = {}) {
 
     if (!dry) await ensureTokenFresh();
 
-    // 1) Contenido (Gemini texto + validación + auditor)
-    if (!entry.caption) {
-      const content = await createDailyContent(date);
-      entry = updatePost(key, { ...content, status: "content_ready" });
+    const kb = loadKnowledge();
+
+    // 1) Plan del día: formato (1 imagen o carrusel de 3–6), tema, layouts, textos, escenas y caption.
+    if (!entry.slides) {
+      const plan = await createDailyPlan(date, { count: dry ? count : undefined });
+      entry = updatePost(key, { ...plan, status: "plan_ready" });
     }
 
-    // 2) Imagen (Nano Banana Pro 2K → JPEG)
-    if (!entry.imageFile) {
-      const img = await createDailyImage(date, entry.imagePrompt);
-      entry = updatePost(key, { imageFile: img.file, imageInfo: { width: img.width, height: img.height, bytes: img.bytes, model: img.model }, status: "image_ready" });
+    // 2) Piezas: foto sin texto (Nano Banana Pro) → inspección de calidad → composición con la tipografía de marca.
+    const budget = { used: entry.imageGenerations ?? 0, max: cfg.maxImagesPerDay };
+    const slides = entry.slides.map((s) => ({ ...s }));
+    try {
+      for (let i = 0; i < slides.length; i++) {
+        if (slides[i].composedFile) continue;
+        const first = slides[0];
+        const useRef = i > 0 && first.rawFile && !["C", "G"].includes(first.layout) && !["C", "G"].includes(slides[i].layout);
+        let photo;
+        try {
+          photo = await generateCheckedPhoto({ slide: slides[i], kb, refs: useRef ? [readRaw(first.rawFile)] : [], budget, index: i, date });
+        } catch (e) {
+          if (e instanceof BudgetError || slides[i].macroFallback) throw e;
+          // La escena arquitectónica no pasó el control: se conserva el texto y el layout, pero la foto pasa a ser un primer plano de la piedra.
+          log(`Pieza ${i + 1}: la escena no pasó el control de calidad; se usa un primer plano de la piedra como alternativa.`);
+          slides[i] = { ...slides[i], macroFallback: true };
+          photo = await generateCheckedPhoto({ slide: slides[i], kb, refs: [], budget, index: i, date });
+        }
+        const rawFile = saveRaw(date, i + 1, photo.buffer);
+        const composed = await saveComposed(date, i + 1, await composeSlide(photo.buffer, slides[i].layout, slides[i]));
+        slides[i] = { ...slides[i], rawFile, composedFile: composed.file, photoAttempts: photo.attempts, qaSkipped: photo.qaSkipped };
+        entry = updatePost(key, { slides, imageGenerations: budget.used, status: "rendering" });
+        log(`Pieza ${i + 1}/${slides.length} lista (layout ${slides[i].layout}, ${photo.attempts} intento/s de foto, ${(composed.bytes / 1024).toFixed(0)} KB)`);
+      }
+    } finally {
+      updatePost(key, { imageGenerations: budget.used });
     }
+    entry = updatePost(key, { status: "images_ready" });
+    const urls = slides.map((s) => mediaUrl(s.composedFile));
 
     if (dry) {
       entry = updatePost(key, { status: "dry_run" });
-      await notify(`🧪 DRY RUN — no se publicó.\nTema: ${entry.topic}\n\n${entry.caption}`, { photoUrl: cfg.publicBaseUrl ? mediaUrl(entry.imageFile) : undefined });
-      return { dryRun: true, topic: entry.topic, caption: entry.caption, imageFile: entry.imageFile };
+      await notify(`🧪 DRY RUN — no se publicó.\nFormato: ${entry.format === "single" ? "1 imagen" : `carrusel de ${entry.count}`} · Tema: ${entry.topic}\n\n${entry.caption}`, { photoUrl: cfg.publicBaseUrl ? urls[0] : undefined });
+      return { dryRun: true, format: entry.format, count: entry.count, topic: entry.topic, layouts: slides.map((s) => s.layout), caption: entry.caption, files: slides.map((s) => s.composedFile) };
     }
 
     // 3) Publicación en Instagram
-    const url = mediaUrl(entry.imageFile);
-    await assertPubliclyReachable(url);
+    for (const u of urls) await assertPubliclyReachable(u);
 
     // Si un intento anterior pudo haber publicado sin que lo supiéramos, lo confirmamos antes de reintentar.
     if (entry.publishStartedAt && !entry.mediaId) {
@@ -73,9 +101,22 @@ export async function runDaily({ dry = cfg.dryRun, force = false } = {}) {
     }
 
     const stale = entry.containerCreatedAt && Date.now() - Date.parse(entry.containerCreatedAt) > 20 * 3600 * 1000;
-    if (!entry.containerId || stale) {
-      const containerId = await createImageContainer({ imageUrl: url, caption: entry.caption, altText: entry.altText });
-      entry = updatePost(key, { containerId, containerCreatedAt: new Date().toISOString(), status: "container_created" });
+    if (stale) entry = updatePost(key, { containerId: null, childIds: [], containerCreatedAt: null });
+
+    if (!entry.containerId) {
+      if (entry.format === "single") {
+        const containerId = await createImageContainer({ imageUrl: urls[0], caption: entry.caption, altText: slides[0].altText });
+        entry = updatePost(key, { containerId, containerCreatedAt: new Date().toISOString(), status: "container_created" });
+      } else {
+        const childIds = [...(entry.childIds ?? [])];
+        for (let i = childIds.length; i < urls.length; i++) {
+          childIds.push(await createCarouselChild({ imageUrl: urls[i], altText: slides[i].altText }));
+          entry = updatePost(key, { childIds, containerCreatedAt: entry.containerCreatedAt ?? new Date().toISOString() });
+        }
+        for (const id of childIds) await waitForContainer(id);
+        const containerId = await createCarouselContainer({ childIds, caption: entry.caption });
+        entry = updatePost(key, { containerId, status: "container_created" });
+      }
     }
     await waitForContainer(entry.containerId);
 
@@ -84,14 +125,15 @@ export async function runDaily({ dry = cfg.dryRun, force = false } = {}) {
     const permalink = await getPermalink(mediaId);
     entry = updatePost(key, { status: "published", mediaId, permalink, publishedAt: new Date().toISOString() });
 
-    await notify(`✅ Publicado en Instagram\nTema: ${entry.topic}\n${permalink ?? mediaId}`, { photoUrl: url });
-    return { published: true, mediaId, permalink };
+    await notify(`✅ Publicado en Instagram (${entry.format === "single" ? "1 imagen" : `carrusel de ${entry.count}`})\nTema: ${entry.topic}\n${permalink ?? mediaId}`, { photoUrl: urls[0] });
+    return { published: true, mediaId, permalink, format: entry.format, count: entry.count };
   } catch (err) {
     const entry = loadState().posts[key];
     const attempts = entry?.attempts ?? 1;
     logError(`✖ Pipeline falló (intento ${attempts}): ${err.message}`);
     updatePost(key, { lastError: String(err.message).slice(0, 500) });
     const transient = err instanceof MetaError ? err.transient : false;
+    if (err instanceof BudgetError) await notify(`⚠️ ${err.message} No se publicará más hoy para no gastar de más; revisa los logs.`);
     if (attempts === 1 || attempts >= cfg.maxAttemptsPerDay) {
       await notify(`⚠️ Falló la publicación diaria (intento ${attempts}/${cfg.maxAttemptsPerDay}${transient ? ", error transitorio" : ""}).\n${String(err.message).slice(0, 500)}`);
     }

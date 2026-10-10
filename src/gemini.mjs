@@ -8,21 +8,16 @@ let workingTextModel = cfg.gemini.textModel || null;
 
 const isModelMissing = (err) => err?.status === 404 || /not found|NOT_FOUND|is not supported|no longer available/i.test(String(err?.message ?? err));
 
-/** Texto → JSON. Prueba los modelos candidatos hasta que la API acepte uno y recuerda el que funcionó. */
-export async function generateJson({ system, prompt, temperature = 0.9 }) {
+async function withTextModel(fn) {
   // El modelo configurado/probado va primero; si deja de existir, se cae a los candidatos en vez de romper el pipeline.
   const candidates = [...new Set([workingTextModel, ...cfg.gemini.textModelCandidates].filter(Boolean))];
   let lastErr;
   for (const model of candidates) {
     try {
-      const res = await getClient().models.generateContent({
-        model,
-        contents: prompt,
-        config: { systemInstruction: system, responseMimeType: "application/json", temperature },
-      });
+      const res = await fn(model);
       if (workingTextModel !== model) log(`Modelo de texto en uso: ${model}`);
       workingTextModel = model;
-      return parseJson(res.text);
+      return res;
     } catch (err) {
       lastErr = err;
       if (!isModelMissing(err)) throw err;
@@ -30,6 +25,19 @@ export async function generateJson({ system, prompt, temperature = 0.9 }) {
     }
   }
   throw new Error(`Ningún modelo de texto disponible (${candidates.join(", ")}). Define GEMINI_TEXT_MODEL. Último error: ${lastErr?.message}`);
+}
+
+/** Texto (y opcionalmente imágenes JPEG para inspección) → JSON. */
+export async function generateJson({ system, prompt, temperature = 0.9, images = [] }) {
+  const parts = [{ text: prompt }, ...images.map((b) => ({ inlineData: { mimeType: "image/jpeg", data: b.toString("base64") } }))];
+  return withTextModel(async (model) => {
+    const res = await getClient().models.generateContent({
+      model,
+      contents: [{ role: "user", parts }],
+      config: { systemInstruction: system, responseMimeType: "application/json", temperature },
+    });
+    return parseJson(res.text);
+  });
 }
 
 export function parseJson(text) {
@@ -43,12 +51,15 @@ export function parseJson(text) {
   }
 }
 
-/** Imagen con Nano Banana Pro (la API solo entrega image/jpeg; misma API «interactions» que usa scripts/gemini-image.mjs del estudio). */
-export async function generateImage(prompt) {
+/** Imagen con Nano Banana Pro (la API solo entrega image/jpeg). `refs` = Buffers JPEG de referencia (continuidad de carrusel). */
+export async function generateImage(prompt, refs = []) {
   const { imageModel, imageAspect, imageSize } = cfg.gemini;
+  const input = refs.length
+    ? [{ type: "text", text: prompt }, ...refs.map((b) => ({ type: "image", mime_type: "image/jpeg", data: b.toString("base64") }))]
+    : prompt;
   const interaction = await getClient().interactions.create({
     model: imageModel,
-    input: prompt,
+    input,
     response_format: { type: "image", mime_type: "image/jpeg", aspect_ratio: imageAspect, image_size: imageSize },
   });
   const data = interaction.output_image?.data;

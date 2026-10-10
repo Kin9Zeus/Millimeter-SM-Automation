@@ -1,0 +1,14 @@
+{
+  "_nota": "Materiales que el contenido puede mostrar (lista del prompt maestro + catálogo de la web). 'tipo' viene de la web oficial. 'look' es una descripción visual GENÉRICA para guiar la imagen: validar con muestras reales del cliente. Nidali, Rojo Levante, Cappuccino y Dark Rosa Portugues no se usan en imágenes hasta tener su descripción validada.",
+  "materiales": [
+    { "id": "bianco-carrara", "nombre": "Bianco Carrara", "tipo": "mármol", "look": "white marble with soft, feathery grey veining" },
+    { "id": "calacatta-venatina", "nombre": "Calacatta Venatina", "tipo": "mármol", "look": "bright white marble with thin, elegant grey veining" },
+    { "id": "calacatta-viola", "nombre": "Calacatta Viola", "tipo": "mármol", "look": "white marble with bold violet-burgundy veining" },
+    { "id": "nero-marquina", "nombre": "Nero Marquina", "tipo": "mármol", "look": "deep black marble with sharp, irregular white veins" },
+    { "id": "dark-emperador", "nombre": "Dark Emperador", "tipo": "mármol", "look": "dark chocolate-brown marble with lighter beige and cream veining" },
+    { "id": "cream-travertine", "nombre": "Cream Travertine", "tipo": "travertino", "look": "warm cream travertine with soft horizontal banding and fine natural pores" },
+    { "id": "verdi-alpi", "nombre": "Verdi Alpi", "tipo": "mármol", "look": "deep green marble with white veining" },
+    { "id": "sahara-noir", "nombre": "Sahara Noir", "tipo": "mármol", "look": "black marble with golden veining" },
+    { "id": "pietra-grey", "nombre": "Pietra Grey", "tipo": "mármol", "look": "grey stone with subtle, fine lighter veining" }
+  ]
+}

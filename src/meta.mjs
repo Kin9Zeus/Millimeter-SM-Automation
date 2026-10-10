@@ -59,6 +59,21 @@ export async function createImageContainer({ imageUrl, caption, altText }) {
   return r.id;
 }
 
+/** Hijo de carrusel: imagen sin caption (el caption va en el contenedor padre). */
+export async function createCarouselChild({ imageUrl, altText }) {
+  const params = { image_url: imageUrl, is_carousel_item: "true" };
+  if (altText) params.alt_text = altText;
+  const r = await call(`/${await igId()}/media`, { method: "POST", params });
+  return r.id;
+}
+
+/** Contenedor del carrusel (2–10 hijos). is_ai_generated va solo aquí, no en los hijos. */
+export async function createCarouselContainer({ childIds, caption }) {
+  const params = { media_type: "CAROUSEL", children: childIds.join(","), caption, is_ai_generated: "true" };
+  const r = await call(`/${await igId()}/media`, { method: "POST", params });
+  return r.id;
+}
+
 export async function waitForContainer(id, { timeoutMs = 5 * 60 * 1000 } = {}) {
   const started = Date.now();
   for (;;) {

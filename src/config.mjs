@@ -22,6 +22,8 @@ export const cfg = {
   dryRun: bool(env.DRY_RUN),
   adminToken: env.ADMIN_TOKEN || "",
   maxAttemptsPerDay: 4,
+  maxGenerationsPerSlide: 3, // intentos de foto por pieza (el inspector rechaza y se regenera con correcciones)
+  maxImagesPerDay: int(env.MAX_IMAGES_PER_DAY, 18), // tope duro de gasto: ~USD 0.13 por imagen
   retryEveryMs: 10 * 60 * 1000,
   tickEveryMs: 5 * 60 * 1000,
   keepImagesDays: 30,
@@ -32,7 +34,7 @@ export const cfg = {
     textModelCandidates: ["gemini-3.1-pro-preview", "gemini-3.1-pro", "gemini-3-pro-preview", "gemini-3-flash-preview", "gemini-2.5-pro", "gemini-2.5-flash"],
     imageModel: env.GEMINI_IMAGE_MODEL || "gemini-3-pro-image",
     imageSize: env.IMAGE_SIZE || "2K",
-    imageAspect: env.IMAGE_ASPECT || "4:5",
+    imageAspect: env.IMAGE_ASPECT || "3:4",
   },
   meta: {
     token: env.META_ACCESS_TOKEN || "",

@@ -40,7 +40,7 @@ const server = createServer(async (req, res) => {
       if (req.method === "GET" && url.pathname === "/admin/status") {
         const s = loadState();
         const posts = Object.values(s.posts).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 10)
-          .map(({ date, status, topic, attempts, lastError, permalink, dry }) => ({ date, status, topic, attempts, lastError, permalink, dry }));
+          .map(({ date, status, topic, format, count, attempts, imageGenerations, lastError, permalink, dry }) => ({ date, status, topic, format, count, attempts, imageGenerations, lastError, permalink, dry }));
         return json(res, 200, { now: localParts(), paused: cfg.paused, dryRun: cfg.dryRun, running: isRunning(), missingConfig: missingConfig(), tokenExpiresAt: s.token?.expiresAt ?? null, posts });
       }
 
@@ -49,7 +49,7 @@ const server = createServer(async (req, res) => {
         const dry = url.searchParams.get("dry") === "1";
         const force = url.searchParams.get("force") === "1";
         if (isRunning()) return json(res, 409, { error: "already_running" });
-        runDaily({ dry, force }).then((r) => log("admin/run OK", r)).catch((e) => logError("admin/run falló:", e.message));
+        runDaily({ dry, force, count: Number(url.searchParams.get("count")) || undefined }).then((r) => log("admin/run OK", r)).catch((e) => logError("admin/run falló:", e.message));
         return json(res, 202, { accepted: true, dry, hint: "Sigue el progreso en GET /admin/status o en los logs." });
       }
     }

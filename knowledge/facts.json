@@ -14,6 +14,8 @@
     { "id": "concepto-4", "category": "concepto", "text": "La piedra tradicional mide 2–3 cm de espesor; MILLIMETER mide 1–5 mm." },
     { "id": "concepto-5", "category": "concepto", "text": "Un milímetro de piedra cubre lo que antes requería dos centímetros: es el mismo acabado de piedra natural con una fracción del espesor." },
 
+    { "id": "concepto-6", "category": "concepto", "text": "Tagline oficial para redes: «Misma piedra. Sin el espesor.» MILLIMETER es piedra 100 % natural (mármol, cuarcita y travertino) en láminas ultrafinas de 1 mm a 5 mm." },
+
     { "id": "problema-1", "category": "contraste", "text": "Durante siglos la piedra impuso sus condiciones: demasiado pesada para estructuras modernas, instalación lenta y costosa, imposible de curvar o doblar y con alto riesgo de roturas en obra." },
     { "id": "problema-2", "category": "contraste", "text": "MILLIMETER ofrece hasta 80–90 % menos de peso, instalación más rápida y segura, curvas y geometrías complejas y una manipulación más fácil y segura." },
 
@@ -52,6 +54,7 @@
 
     { "id": "contacto-1", "category": "contacto", "text": "Cuéntanos qué estás diseñando: con planos, referencias o un boceto a mano basta para decirte si MILLIMETER es el material adecuado y con qué espesor. Contacto: info@millimeterbycasanova.com" },
     { "id": "contacto-2", "category": "contacto", "text": "Sitio web oficial: www.millimetersouthamerica.com. MILLIMETER Global LLC tiene su oficina central en Houston, Texas, EE. UU." },
+    { "id": "contacto-4", "category": "contacto", "text": "Canales de contacto: mensaje directo (DM) de Instagram, WhatsApp o millimetersouthamerica.com. Se revisa el detalle constructivo con el cliente, con respuesta en menos de 24 h hábiles." },
     { "id": "contacto-3", "category": "contacto", "text": "Para Sudamérica, un arquitecto revisa los detalles constructivos antes de cotizar y la respuesta llega en menos de 24 horas hábiles." }
   ],
   "no_afirmar": [
