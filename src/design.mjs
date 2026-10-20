@@ -67,7 +67,7 @@ const POOLS = {
 };
 
 /** Layout por pieza: portada distinta a las 3 portadas anteriores y sin repetir layout dentro del post. */
-export function chooseLayouts(roles, posts, date) {
+export function chooseLayouts(roles, posts, date, { sceneCover = false } = {}) {
   const r = rng(`layouts:${date}`);
   const recentCovers = Object.values(posts)
     .filter((p) => p.status === "published" && Array.isArray(p.slides) && p.slides[0]?.layout)
@@ -77,10 +77,12 @@ export function chooseLayouts(roles, posts, date) {
   const used = [];
   return roles.map((role, i) => {
     let pool = POOLS[role] ?? POOLS.aplicacion;
-    let allowed = pool.filter(([l]) => !used.includes(l) && (i > 0 || !recentCovers.includes(l)));
+    // sceneCover (posts de una idea del cliente): la portada nunca es una textura pura (C/G), que descartaría el mueble o espacio pedido.
+    const textureOk = (l) => !(sceneCover && i === 0 && (l === "C" || l === "G"));
+    let allowed = pool.filter(([l]) => !used.includes(l) && (i > 0 || !recentCovers.includes(l)) && textureOk(l));
     // Si el pool del rol se agota, se toma cualquier layout (A–G) aún no usado en este post.
-    if (!allowed.length) allowed = ["A", "B", "C", "D", "E", "F", "G"].filter((l) => !used.includes(l) && (i > 0 || !recentCovers.includes(l))).map((l) => [l, 1]);
-    if (!allowed.length) allowed = ["A", "B", "C", "D", "E", "F", "G"].filter((l) => !used.includes(l)).map((l) => [l, 1]);
+    if (!allowed.length) allowed = ["A", "B", "C", "D", "E", "F", "G"].filter((l) => !used.includes(l) && (i > 0 || !recentCovers.includes(l)) && textureOk(l)).map((l) => [l, 1]);
+    if (!allowed.length) allowed = ["A", "B", "C", "D", "E", "F", "G"].filter((l) => !used.includes(l) && textureOk(l)).map((l) => [l, 1]);
     const layout = weighted(allowed, r);
     used.push(layout);
     return layout;

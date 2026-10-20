@@ -26,10 +26,12 @@ export function buildPhotoPrompt(slide, kb) {
     ].join("\n\n");
   }
   const s = slide.scene;
+  // Último intento antes del primer plano: misma idea, composición más sencilla (un solo mueble, plano frontal) para que sea más fácil de lograr sin juntas.
+  const camera = slide.simplified ? "straight-on medium shot at eye level, simple uncluttered composition with one main piece of furniture" : s.camera;
   return [
     `${STYLE}`,
-    `COMPOSITION: ${brief} Camera: ${s.camera}.`,
-    `SCENE: ${s.space}. ${s.furniture_and_materials}. Light: ${s.light}. The ${s.stone_application} is ONE single giant continuous panel of ${mat.nombre} (${mat.look}), floor to ceiling and side to side, veining uninterrupted: absolutely no joints, seams or divisions.`,
+    `COMPOSITION: ${brief} Camera: ${camera}.`,
+    `SCENE: ${s.space}. ${s.furniture_and_materials}. Light: ${s.light}. The ${s.stone_application} is ONE single giant continuous panel of ${mat.nombre} (${mat.look}), floor to ceiling and side to side, veining uninterrupted: absolutely no joints, seams or divisions. Every other surface (floor, ceiling, remaining walls) is NOT stone: use warm oak wood and smooth plaster, so no stone joints or tile grids appear anywhere in the frame.`,
     REALISM_RULES, NO_TEXT, PALETTE,
   ].join("\n\n");
 }
@@ -39,7 +41,7 @@ const QA_SYSTEM = "Eres un inspector de calidad de fotografía de arquitectura p
 function qaPrompt(layout) {
   return `Inspecciona esta imagen (será la base de una publicación de Instagram). Rechaza (ok=false) si ocurre CUALQUIERA de estas fallas:
 1. Hay texto, letras, números, logotipos o marcas de agua visibles.
-2. Las superficies de piedra muestran juntas, líneas de unión, baldosas, retículas o varias placas (las vetas naturales NO son juntas; sí lo son las líneas rectas que dividen la superficie).
+2. Las superficies de piedra muestran juntas, líneas de unión, baldosas, retículas o varias placas (las vetas naturales NO son juntas, ni las rendijas finas entre puertas o cajones cerrados de un mueble, ni el encuentro pared-suelo; sí lo son las líneas rectas que dividen una superficie continua de piedra).
 3. La piedra se ve gruesa: cantos de placa visibles, puertas o frentes abiertos mostrando espesor, bordes con grosor.
 4. La piedra aparece doblada, plegada, enrollada, levantada como papel o flotando.
 5. Hay personas, manos o figuras deformes.
@@ -88,13 +90,13 @@ export async function trimSideBars(buffer, { maxFraction = 0.15, maxStd = 1.2 } 
  * Genera la foto de una pieza y la inspecciona; si falla, regenera con correcciones concretas (como pide el prompt
  * maestro: «correcciones puntuales en lugar de regenerar a ciegas»). `budget` = { used, max } compartido por el post.
  */
-export async function generateCheckedPhoto({ slide, kb, refs = [], budget, index = 0, date = "x" }) {
+export async function generateCheckedPhoto({ slide, kb, refs = [], budget, index = 0, date = "x", maxAttempts = cfg.maxGenerationsPerSlide }) {
   let base = buildPhotoPrompt(slide, kb);
   // La referencia solo aporta material y lenguaje de diseño; sin esto el modelo copia la escena de la primera pieza.
   if (refs.length) base += "\n\nREFERENCE IMAGE: use it ONLY for the stone material, color palette and design language. Show a completely DIFFERENT space, different furniture, a different camera angle and a different composition. Do NOT repeat or copy the reference scene.";
   let extra = "";
   let lastIssues = [];
-  for (let attempt = 1; attempt <= cfg.maxGenerationsPerSlide; attempt++) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     if (budget.used >= budget.max) throw new BudgetError(`Tope diario de imágenes alcanzado (${budget.max}).`);
     budget.used++;
     const g = await generateImage(base + extra, refs);
@@ -110,5 +112,5 @@ export async function generateCheckedPhoto({ slide, kb, refs = [], budget, index
     log(`Foto rechazada por el inspector (intento ${attempt}):`, qa.issues);
     extra = `\n\nFIX THESE PROBLEMS FROM THE PREVIOUS ATTEMPT, keeping everything else: ${qa.issues.join("; ")}`;
   }
-  throw new Error(`La foto de la pieza ${slide.layout} no pasó el control de calidad tras ${cfg.maxGenerationsPerSlide} intentos: ${lastIssues.join("; ")}`);
+  throw new Error(`La foto de la pieza ${slide.layout} no pasó el control de calidad tras ${maxAttempts} intentos: ${lastIssues.join("; ")}`);
 }

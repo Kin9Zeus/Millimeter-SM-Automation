@@ -38,12 +38,14 @@ Las ideas pasan por las mismas reglas de datos oficiales: el bot no publica prec
 
 const NOT_LINKED = "Este chat no está vinculado. Si eres parte del equipo, envía /vincular <código> con el código que te dieron.";
 
-function nextPublication() {
+/** Cuándo sale la próxima publicación programada, según el estado real de hoy (publicada, pendiente, pausada…). */
+export function nextPublication() {
   const { date } = localParts();
   const today = loadState().posts[date];
   const sch = hhmm(schedule());
-  if (today?.status === "published" || isPastPostTime()) return `mañana a las ${sch}`;
-  return `hoy a las ${sch}`;
+  const done = today?.status === "published" || (today?.attempts ?? 0) >= cfg.maxAttemptsPerDay;
+  const when = done ? `mañana a las ${sch}` : isPastPostTime() ? "en los próximos minutos (la hora de hoy ya pasó y aún no se publicó)" : `hoy a las ${sch}`;
+  return isPaused() ? `${when}, pero las publicaciones están PAUSADAS (reanuda con /reanudar)` : when;
 }
 
 const fmtTopic = (p) => (p.ideaText ? `idea: «${p.ideaText.slice(0, 60)}»` : p.topic);
@@ -99,7 +101,7 @@ const HANDLERS = {
     if (listIdeas().length >= 10) return "Ya hay 10 ideas en cola. Quita alguna con /borrar_idea <n>.";
     addIdea(text, chat.name);
     const n = listIdeas().length;
-    return `💡 Idea guardada (#${n} en la cola). Se usará en la publicación de ${n === 1 ? nextPublication() : "las próximas fechas, una por día"}.\nPasa por las mismas reglas de datos oficiales; si no puedo convertirla en un post válido te aviso y publico un tema automático.`;
+    return `💡 Idea guardada (#${n} en la cola). ${n === 1 ? `Se usará en la próxima publicación programada: ${nextPublication()}.` : `Se usará en una de las próximas publicaciones programadas, una idea por día (la primera sale ${nextPublication()}).`}\nPasa por las mismas reglas de datos oficiales; si no puedo convertirla en un post válido te aviso y publico un tema automático.`;
   },
 
   async ideas() {
@@ -130,7 +132,7 @@ const HANDLERS = {
   async reanudar() {
     if (pausedByEnv()) return "La pausa está fijada en el servidor (variable PAUSED); quítala en Railway para reanudar.";
     setPaused(false);
-    return `▶️ Publicaciones reanudadas: próxima ${nextPublication()}.`;
+    return `▶️ Publicaciones reanudadas. Próxima: ${nextPublication()}.`;
   },
 
   async hora({ args }) {
