@@ -67,6 +67,14 @@ export function validatePlan(plan, ctx) {
     if (layouts[i] === "C" && (!s.big || s.big.length > 14 || !s.bigLabel || s.bigLabel.length > 28)) p.push(`${tag}: el layout C necesita big (≤14) y bigLabel (≤28).`);
     if (s.alt_text == null || String(s.alt_text).length < 20) p.push(`${tag}: falta alt_text descriptivo.`);
     const sc = s.scene ?? {};
+    const d = ctx.directives?.[i];
+    if (d) {
+      if (d.material && sc.stone_material !== d.material) p.push(`${tag}: scene.stone_material debe ser exactamente «${d.material}».`);
+      if (d.application && layouts[i] !== "C" && layouts[i] !== "G") {
+        if (!normalize(sc.stone_application).includes(normalize(d.application))) p.push(`${tag}: scene.stone_application debe ser «${d.application}» (cópialo literal).`);
+        if (!normalize(sc.space).includes(normalize(d.space))) p.push(`${tag}: scene.space debe empezar por «${d.space}».`);
+      }
+    }
     if (!kb.materialByName.has(sc.stone_material)) p.push(`${tag}: scene.stone_material debe ser uno de: ${kb.materials.map((m) => m.nombre).join(", ")}.`);
     if (layouts[i] !== "C" && layouts[i] !== "G") for (const k of ["space", "furniture_and_materials", "light", "camera", "stone_application"]) if (!sc[k] || String(sc[k]).length < 4) p.push(`${tag}: falta scene.${k}.`);
     if (/\b(personas?|people|persons?|man|woman|mujer|hombre|ni[ñn]os?|children|child)\b/i.test(stripNegations(sc))) p.push(`${tag}: la escena no debe incluir personas.`);

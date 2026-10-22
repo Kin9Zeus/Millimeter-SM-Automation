@@ -32,7 +32,7 @@ export function buildPhotoPrompt(slide, kb) {
     `${STYLE}`,
     `COMPOSITION: ${brief} Camera: ${camera}.`,
     `SCENE: ${s.space}. ${s.furniture_and_materials}. Light: ${s.light}. The ${s.stone_application} is ONE single giant continuous panel of ${mat.nombre} (${mat.look}), floor to ceiling and side to side, veining uninterrupted: absolutely no joints, seams or divisions. Every other surface (floor, ceiling, remaining walls) is NOT stone: use warm oak wood and smooth plaster, so no stone joints or tile grids appear anywhere in the frame.`,
-    REALISM_RULES, NO_TEXT, PALETTE,
+    REALISM_RULES, NO_TEXT, slide.directive?.palette ? `Palette: ${slide.directive.palette}.` : PALETTE,
   ].join("\n\n");
 }
 
@@ -111,6 +111,8 @@ export async function generateCheckedPhoto({ slide, kb, refs = [], budget, index
     try { saveRejected(date, index + 1, g.buffer); } catch { /* diagnóstico opcional */ }
     log(`Foto rechazada por el inspector (intento ${attempt}):`, qa.issues);
     extra = `\n\nFIX THESE PROBLEMS FROM THE PREVIOUS ATTEMPT, keeping everything else: ${qa.issues.join("; ")}`;
+    // El inspector suele repetir «juntas visibles»: tras el primer rechazo se acota la superficie de piedra para que sea una sola pieza lisa.
+    extra += " Make the stone feature ONE smooth, uninterrupted surface of moderate size (do not show large expanses of stone wall or stone floor) and keep every other surface non-stone.";
   }
   throw new Error(`La foto de la pieza ${slide.layout} no pasó el control de calidad tras ${maxAttempts} intentos: ${lastIssues.join("; ")}`);
 }

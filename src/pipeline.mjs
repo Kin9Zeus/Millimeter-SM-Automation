@@ -106,9 +106,9 @@ export async function runDaily({ dry = cfg.dryRun, force = false, count, extra =
           photo = await generateCheckedPhoto({ slide: slides[i], kb, refs, budget, index: i, date });
         } catch (e) {
           if (e instanceof BudgetError || slides[i].macroFallback) throw e;
-          // Pieza de una idea del cliente: un último intento con la misma escena pero más sencilla, antes de renunciar al mueble/espacio pedido.
-          if (slides[i].fromIdea && !slides[i].simplified && !["C", "G"].includes(slides[i].layout)) {
-            log(`Pieza ${i + 1}: la escena de la idea no pasó el control; último intento con una composición más sencilla.`);
+          // Un último intento con la misma escena pero más sencilla, antes de renunciar a la aplicación real y caer a una textura plana.
+          if (!slides[i].simplified && !["C", "G"].includes(slides[i].layout)) {
+            log(`Pieza ${i + 1}: la escena no pasó el control; último intento con una composición más sencilla.`);
             slides[i] = { ...slides[i], simplified: true };
             try {
               photo = await generateCheckedPhoto({ slide: slides[i], kb, refs, budget, index: i, date, maxAttempts: 1 });

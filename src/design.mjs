@@ -58,12 +58,13 @@ export function rolesFor(count) {
 }
 
 const POOLS = {
-  unico: [["E", 3], ["B", 3], ["D", 3], ["F", 2], ["A", 1.5], ["C", 1.5]],
+  // C y G son texturas planas de piedra: se mantienen como recurso ocasional, no como protagonistas del feed.
+  unico: [["E", 3], ["B", 3], ["D", 3], ["F", 2], ["A", 2], ["C", 0.5]],
   gancho: [["E", 3], ["B", 3], ["D", 3], ["F", 2], ["A", 1.5]],
-  dato: [["C", 4], ["D", 2], ["B", 2], ["G", 1]],
+  dato: [["C", 2], ["D", 3], ["B", 3], ["A", 2], ["E", 1.5], ["G", 0.5]],
   aplicacion: [["B", 3], ["F", 3], ["D", 2], ["E", 2], ["A", 1.5]],
   material: [["F", 3], ["B", 3], ["D", 2], ["E", 2]],
-  cta: [["G", 4], ["B", 2], ["F", 2], ["D", 1]],
+  cta: [["G", 1.5], ["B", 3], ["F", 3], ["D", 2], ["A", 1.5]],
 };
 
 /** Layout por pieza: portada distinta a las 3 portadas anteriores y sin repetir layout dentro del post. */
