@@ -98,6 +98,11 @@ export async function broadcast(text, { photoUrls } = {}) {
 // ---------- Recepción (long polling) ----------
 export const BOT_COMMANDS = [
   ["estado", "Qué se publicó hoy y qué viene"],
+  ["semana", "Qué se publicará los próximos 7 días"],
+  ["cambiar", "Fijar una idea para un día de la semana"],
+  ["metricas", "Alcance, guardados y mejores posts"],
+  ["gasto", "Gasto estimado de Gemini"],
+  ["salud", "Revisar que todo funcione"],
   ["forzar", "Publicar un post extra ahora (opcional: /forzar <idea>)"],
   ["idea", "Dar una idea para la próxima publicación"],
   ["ideas", "Ver las ideas en cola"],

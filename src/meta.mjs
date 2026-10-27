@@ -146,3 +146,53 @@ export async function findPublishedSince(sinceIso, captionHead) {
 export async function whoami() {
   return call("/me", { params: { fields: "user_id,username,account_type,media_count" } });
 }
+
+// ---------- Métricas (insights) ----------
+const MEDIA_METRICS = ["reach", "saved", "shares", "total_interactions", "views"];
+const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
+
+/**
+ * Cifras de una publicación: likes y comentarios (campos básicos) + alcance, guardados, compartidos, interacciones y vistas (insights).
+ * Si Meta rechaza alguna métrica o el token no tiene el permiso de insights, devuelve lo que sí hay y deja el motivo en `insightsError`.
+ */
+export async function getMediaStats(mediaId) {
+  const basic = await call(`/${mediaId}`, { params: { fields: "like_count,comments_count,timestamp,media_type" } });
+  const out = { likes: num(basic.like_count), comments: num(basic.comments_count), reach: null, saved: null, shares: null, interactions: null, views: null, insightsError: null };
+  let metrics = MEDIA_METRICS;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const r = await call(`/${mediaId}/insights`, { params: { metric: metrics.join(",") } });
+      const v = Object.fromEntries((r.data ?? []).map((d) => [d.name, num(d.values?.[0]?.value ?? d.total_value?.value)]));
+      Object.assign(out, { reach: v.reach ?? null, saved: v.saved ?? null, shares: v.shares ?? null, interactions: v.total_interactions ?? null, views: v.views ?? null });
+      return out;
+    } catch (e) {
+      if (!(e instanceof MetaError)) throw e;
+      // 100 = alguna métrica no existe para este tipo de medio: se reintenta con el conjunto mínimo.
+      if (e.code === 100 && attempt === 0) { metrics = ["reach", "saved", "shares", "total_interactions"]; continue; }
+      out.insightsError = e.message;
+      return out;
+    }
+  }
+  return out;
+}
+
+/** Cuenta: seguidores y totales de los últimos `days` días (alcance, vistas, visitas al perfil, cuentas que interactuaron). */
+export async function getAccountStats(days = 7) {
+  const me = await call("/me", { params: { fields: "username,followers_count,media_count" } });
+  const out = { username: me.username, followers: num(me.followers_count), mediaCount: num(me.media_count), reach: null, views: null, profileViews: null, accountsEngaged: null, insightsError: null };
+  const now = Math.floor(Date.now() / 1000);
+  const range = { period: "day", metric_type: "total_value", since: String(now - days * 86400), until: String(now) };
+  try {
+    const id = await igId();
+    const [a, b] = await Promise.all([
+      call(`/${id}/insights`, { params: { metric: "reach,accounts_engaged,profile_views", ...range } }),
+      call(`/${id}/insights`, { params: { metric: "views", ...range } }),
+    ]);
+    const v = Object.fromEntries([...(a.data ?? []), ...(b.data ?? [])].map((d) => [d.name, num(d.total_value?.value)]));
+    Object.assign(out, { reach: v.reach ?? null, views: v.views ?? null, profileViews: v.profile_views ?? null, accountsEngaged: v.accounts_engaged ?? null });
+  } catch (e) {
+    if (!(e instanceof MetaError)) throw e;
+    out.insightsError = e.message;
+  }
+  return out;
+}

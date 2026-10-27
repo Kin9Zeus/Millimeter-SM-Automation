@@ -3,6 +3,11 @@ import { cfg, localParts, log, logError } from "./config.mjs";
 import { isRunning, runDaily } from "./pipeline.mjs";
 import { hhmm, isPaused, isPastPostTime, pausedByEnv, schedule, setPaused, setSchedule } from "./runtime.mjs";
 import { addIdea, listIdeas, loadState, removeIdea } from "./state.mjs";
+import { AGENDA_DAYS, formatAgenda, upcomingDays } from "./agenda.mjs";
+import { dayLabel, fmtKind, fmtTopic } from "./format.mjs";
+import { collectHealth, formatHealth } from "./health.mjs";
+import { metricsReport } from "./metrics.mjs";
+import { formatSpend, spendReport } from "./spend.mjs";
 import { isLinkBlocked, isLinked, linkChat, linkedChats, registerLinkFailure, sendText, unlinkChat } from "./telegram.mjs";
 
 // Interfaz de órdenes por Telegram. Solo atiende chats privados vinculados con el código secreto.
@@ -24,6 +29,11 @@ const safeEqual = (a, b) => {
 const HELP = `Comandos (solo para chats vinculados):
 
 /estado — qué se publicó hoy y qué viene
+/semana — qué se publicará los próximos 7 días (formato, tema o idea)
+/cambiar <n> <idea> — fija una idea para el día n de /semana (/cambiar <n> auto la quita)
+/metricas [días] — alcance, guardados y mejores posts (7 por defecto, máx. 30)
+/gasto — gasto estimado de Gemini (hoy, mes y proyección)
+/salud — revisa que todo funcione: Instagram, Gemini, token, disco…
 /forzar — publica un post extra ahora (tarda 2–5 min)
 /forzar <idea> — igual, pero sobre tu idea
 /idea <texto> — guarda una idea para la próxima publicación programada
@@ -47,9 +57,6 @@ export function nextPublication() {
   const when = done ? `mañana a las ${sch}` : isPastPostTime() ? "en los próximos minutos (la hora de hoy ya pasó y aún no se publicó)" : `hoy a las ${sch}`;
   return isPaused() ? `${when}, pero las publicaciones están PAUSADAS (reanuda con /reanudar)` : when;
 }
-
-const fmtTopic = (p) => (p.ideaText ? `idea: «${p.ideaText.slice(0, 60)}»` : p.topic);
-const fmtKind = (p) => (p.format === "single" ? "1 imagen" : `carrusel de ${p.count}`);
 
 function estado() {
   const s = loadState();
@@ -107,7 +114,46 @@ const HANDLERS = {
   async ideas() {
     const q = listIdeas();
     if (!q.length) return "No hay ideas en cola. Agrega una con /idea <texto>.";
-    return `💡 Ideas en cola (una por publicación programada):\n${q.map((i, n) => `${n + 1}. ${i.text}`).join("\n")}\n\nQuita una con /borrar_idea <n>.`;
+    return `💡 Ideas en cola (una por publicación programada):\n${q.map((i, n) => `${n + 1}. ${i.text}${i.forDate ? ` — fijada para ${dayLabel(i.forDate)}` : ""}`).join("\n")}\n\nQuita una con /borrar_idea <n>. Mira cómo queda la semana con /semana.`;
+  },
+
+  async semana() { return formatAgenda(upcomingDays()); },
+
+  async cambiar({ args, chat }) {
+    const m = args.match(/^(\d+)\s+([\s\S]+)$/);
+    if (!m) return `Formato: /cambiar <n> <idea> (n = número del día en /semana, 1–${AGENDA_DAYS}). Ej.: /cambiar 3 Un post sobre duchas amplias con poca junta. Para volver al tema automático: /cambiar 3 auto`;
+    const n = parseInt(m[1], 10);
+    if (n < 1 || n > AGENDA_DAYS) return `El día debe estar entre 1 y ${AGENDA_DAYS} (mira /semana).`;
+    const day = upcomingDays()[n - 1];
+    const label = dayLabel(day.date);
+    const reserved = listIdeas().find((i) => i.forDate === day.date);
+
+    if (/^(auto|autom[aá]tico|quitar)$/i.test(m[2].trim())) {
+      if (reserved) { removeIdea(reserved.id); return `↩️ ${label} vuelve al tema automático.`; }
+      const k = day.idea ? listIdeas().indexOf(day.idea) + 1 : 0;
+      return k ? `${label} usa la idea #${k} de la cola, que no está fijada a un día. Quítala con /borrar_idea ${k}.` : `${label} ya usa un tema automático.`;
+    }
+
+    const text = cleanIdea(m[2]);
+    if (text.length < 10 || text.length > 400) return "La idea debe tener entre 10 y 400 caracteres.";
+    if (reserved) removeIdea(reserved.id);
+    if (listIdeas().length >= 10) return "Ya hay 10 ideas en cola. Quita alguna con /borrar_idea <n>.";
+    addIdea(text, chat.name, day.date);
+    return `📌 Idea fijada para ${label} (${fmtKind(day)}): «${text.slice(0, 80)}»\nPasa por las mismas reglas de datos oficiales; si no puedo convertirla en un post válido te aviso y ese día publico un tema automático.${day.idea && !day.idea.forDate ? "\nLa idea que ocupaba ese día pasa al siguiente día libre." : ""}`;
+  },
+
+  async metricas({ args, chat }) {
+    const days = args ? parseInt(args, 10) : 7;
+    if (!Number.isInteger(days) || days < 1 || days > 30) return "Formato: /metricas [días], de 1 a 30 (por defecto 7). Ej.: /metricas 30";
+    await reply(chat.id, "⏳ Consultando Instagram…");
+    return metricsReport(days);
+  },
+
+  async gasto() { return formatSpend(spendReport()); },
+
+  async salud({ chat }) {
+    await reply(chat.id, "⏳ Revisando servicios…");
+    return formatHealth(await collectHealth());
   },
 
   async borrar_idea({ args }) {

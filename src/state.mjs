@@ -58,13 +58,19 @@ import { randomBytes } from "node:crypto";
 
 export const listIdeas = () => loadState().queue ?? [];
 
-export function addIdea(text, by) {
+/** `forDate` (YYYY-MM-DD, opcional) reserva la idea para ese día de publicación (/cambiar); sin fecha, se usa en orden de llegada. */
+export function addIdea(text, by, forDate = null) {
   const s = loadState();
   s.queue ??= [];
-  const idea = { id: randomBytes(3).toString("hex"), text, by, at: new Date().toISOString() };
+  const idea = { id: randomBytes(3).toString("hex"), text, by, at: new Date().toISOString(), ...(forDate ? { forDate } : {}) };
   s.queue.push(idea);
   saveState();
   return idea;
+}
+
+/** Idea que le toca a la publicación de `date`: primero la reservada para ese día; si no, la más antigua sin fecha (o con fecha ya vencida). */
+export function ideaForDate(date, queue = listIdeas()) {
+  return queue.find((i) => i.forDate === date) ?? queue.find((i) => !i.forDate || i.forDate < date) ?? null;
 }
 
 export function removeIdea(id) {

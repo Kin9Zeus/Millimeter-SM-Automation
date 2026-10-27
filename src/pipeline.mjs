@@ -1,5 +1,5 @@
 import { cfg, localParts, log, logError, missingConfig } from "./config.mjs";
-import { isPastPostTime, isPaused } from "./runtime.mjs";
+import { isPastPostTime, isPaused, markTick } from "./runtime.mjs";
 import { composeSlide } from "./compose.mjs";
 import { PlanError, createDailyPlan } from "./content.mjs";
 import { cleanupOldImages, readRaw, saveComposed, saveRaw } from "./image.mjs";
@@ -7,7 +7,8 @@ import { loadKnowledge } from "./knowledge.mjs";
 import { MetaError, createCarouselChild, createCarouselContainer, createImageContainer, ensureTokenFresh, findPublishedSince, getPermalink, publishContainer, waitForContainer } from "./meta.mjs";
 import { notify } from "./notify.mjs";
 import { BudgetError, generateCheckedPhoto } from "./photo.mjs";
-import { listIdeas, loadState, removeIdea, shouldAlert, updatePost } from "./state.mjs";
+import { ideaForDate, loadState, removeIdea, shouldAlert, updatePost } from "./state.mjs";
+import { budgetAlert, spendReport } from "./spend.mjs";
 
 let running = false;
 export const isRunning = () => running;
@@ -84,7 +85,7 @@ export async function runDaily({ dry = cfg.dryRun, force = false, count, extra =
     // 1) Plan del día: formato (1 imagen o carrusel de 3–6), tema, layouts, textos, escenas y caption.
     if (!entry.slides) {
       // Idea del cliente: la que viene en la orden (/forzar, /previa) o, en la publicación programada, la primera de la cola.
-      const queued = !ideaText && !dry && !extra ? listIdeas()[0] : null;
+      const queued = !ideaText && !dry && !extra ? ideaForDate(date) : null;
       const idea = ideaText ?? queued?.text;
       const planOpts = { count: dry ? count : undefined, seed: key };
       const { plan, ideaRejected } = await planWithIdea({ date, planOpts, idea, explicit: Boolean(ideaText), queued });
@@ -199,7 +200,10 @@ export async function runDaily({ dry = cfg.dryRun, force = false, count, extra =
 
 /** Latido del scheduler: renueva el token si toca y dispara el pipeline cuando corresponde. */
 export async function tick() {
+  markTick();
   try {
+    const alert = budgetAlert(spendReport());
+    if (alert && shouldAlert(alert.key, 24 * 31)) await notify(alert.text);
     if (cfg.meta.token) {
       const t = await ensureTokenFresh();
       if (t.error && t.daysLeft == null && shouldAlert("token-sin-renovar", 24)) {

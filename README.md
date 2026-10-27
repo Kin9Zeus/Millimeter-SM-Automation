@@ -8,11 +8,11 @@
 ![Gemini](https://img.shields.io/badge/Gemini-Nano%20Banana%20Pro-4285F4?logo=googlegemini&logoColor=white)
 ![Instagram API](https://img.shields.io/badge/Instagram%20API-Meta%20Graph-E4405F?logo=instagram&logoColor=white)
 ![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?logo=railway&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-23%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-56%20passing-brightgreen)
 ![Dependencies](https://img.shields.io/badge/dependencies-3-blue)
 ![Status](https://img.shields.io/badge/status-en%20producci%C3%B3n-success)
 
-[El problema](#-el-problema) · [Cómo funciona](#-cómo-funciona) · [Decisiones de ingeniería](#-decisiones-de-ingeniería) · [Control por Telegram](#-control-por-telegram) · [Despliegue](#-despliegue-en-railway) · [Límites](#-límites-conocidos)
+[El problema](#-el-problema) · [Cómo funciona](#-cómo-funciona) · [Decisiones de ingeniería](#-decisiones-de-ingeniería) · [Control por Telegram](#-control-por-telegram) · [Operación y métricas](#-operación-y-métricas) · [Despliegue](#-despliegue-en-railway) · [Límites](#-límites-conocidos)
 
 </div>
 
@@ -36,14 +36,17 @@ Este proyecto resuelve ambos: **un bot que trabaja solo, pero que está diseñad
 | 🖼️ **Fotos sin texto, tipografía exacta** | Nano Banana Pro genera la fotografía; un compositor propio superpone la tipografía de marca. El nombre, las tildes y las cifras nunca salen deformados. |
 | 👁️ **Control de calidad visual** | Un inspector (visión por IA) rechaza juntas visibles, piedra doblada, texto fantasma o personas, y regenera con correcciones. |
 | 🛡️ **Idempotente y con tope de gasto** | Un reinicio retoma donde quedó, nunca publica dos veces y nunca supera el presupuesto diario de imágenes. |
-| 📱 **Se controla desde el móvil** | Comandos de Telegram para forzar un post, encolar ideas, pausar o cambiar la hora. |
+| 📱 **Se controla desde el móvil** | Comandos de Telegram para forzar un post, encolar o fijar ideas por día, pausar o cambiar la hora. |
+| 📈 **Mide lo que publica** | `/metricas` trae alcance, guardados, compartidos y el mejor y peor post, y compara formatos y temas. |
+| 🗓️ **Agenda visible** | `/semana` muestra, sin gastar nada, el formato y el tema exactos de los próximos 7 días. |
+| 🩺 **Se autodiagnostica** | `/salud` revisa Instagram, Gemini, token, dominio, disco y errores; `/gasto` estima el gasto y avisa al acercarse al presupuesto. |
 
 ## 🏗️ Cómo funciona
 
 ```mermaid
 flowchart TD
     T["⏱ Heartbeat cada 5 min<br/>¿ya es la hora y no hay post hoy?"] --> D
-    D["🎲 Decisiones deterministas<br/>formato · tema · layouts · material<br/><i>semilla = fecha</i>"] --> P
+    D["🎲 Decisiones deterministas<br/>formato · tema · layouts · material<br/>aplicación · espacio · plano · luz<br/><i>semilla = fecha</i>"] --> P
     P["🧠 Plan con Gemini<br/>ángulo · textos de cada pieza · escena · caption"] --> V
     V{"✅ Validador determinista<br/>cifras, correos y URLs ∈ base oficial<br/>sin precios, garantías ni certificaciones"}
     V -- falla --> P
@@ -100,6 +103,8 @@ Siete layouts de marca, elegidos de forma determinista para que el feed nunca se
 | **F** | Marco revista |
 | **G** | Tipográfica |
 
+**Variedad visual decidida por código, no por el modelo.** Un feed generado por IA tiende a repetirse (mismo salón, mismo roble, mismo plano frontal). Por eso [`variety.mjs`](src/variety.mjs) fija, para cada pieza, la **aplicación** de la piedra (una de las 8 oficiales, en 19 variantes), el **espacio**, el **plano**, la **luz** y el **material**, y para cada post el **ambiente** y su paleta, penalizando lo usado en los últimos 10 posts. El validador exige que la escena respete esas directivas y el banco de temas tiene 26 entradas, todas apoyadas en hechos oficiales. Las texturas planas (layouts C y G) quedan como recurso ocasional.
+
 Tipografía: *Cormorant Garamond* y *Montserrat* (SIL OFL 1.1), embebidas para renderizar sin depender de las fuentes del sistema.
 
 ## 📚 Conocimiento (lo que el bot «sabe»)
@@ -108,7 +113,7 @@ Tipografía: *Cormorant Garamond* y *Montserrat* (SIL OFL 1.1), embebidas para r
 |---|---|
 | [`knowledge/facts.json`](knowledge/facts.json) | Única fuente de datos afirmables (brochure + web oficial). |
 | [`knowledge/guia-editorial.md`](knowledge/guia-editorial.md) | Marca, sistema de diseño, estructura del caption, copy y tono. |
-| [`knowledge/topics.json`](knowledge/topics.json) | Banco de temas; se elige el menos usado recientemente. |
+| [`knowledge/topics.json`](knowledge/topics.json) | Banco de 26 temas; se elige el menos usado recientemente. |
 | [`knowledge/materiales.json`](knowledge/materiales.json) | Los 9 materiales del catálogo y su descripción visual genérica. |
 
 El **caption** sigue un esqueleto fijo del cliente: titular · problema · solución · 4 viñetas · tagline · CTA + contacto · banderas de los países · máx. 5 hashtags.
@@ -120,6 +125,11 @@ El cliente da órdenes al bot desde un chat privado. No hay aprobación por piez
 | Comando | Qué hace |
 |---|---|
 | `/estado` | Qué se publicó hoy, qué viene, ideas en cola, gasto de imágenes y estado del token. |
+| `/semana` | Los próximos 7 días: formato y tema (o idea) de cada publicación. Es exacto y no consume Gemini. |
+| `/cambiar <n> <idea>` | Fija una idea para el día *n* de `/semana`. `/cambiar <n> auto` vuelve al tema automático. |
+| `/metricas [días]` | Alcance, vistas, guardados, compartidos e interacciones de los últimos 1–30 días (7 por defecto); mejor y peor post; comparación por formato y por tema. |
+| `/gasto` | Gasto estimado de Gemini hoy, en el mes, proyección a fin de mes y últimos 7 días. |
+| `/salud` | Chequeo de Instagram, Gemini, vencimiento del token, cuota de publicación, dominio público, disco, programador y errores recientes. |
 | `/forzar` · `/forzar <idea>` | Publica un post extra ahora (2–5 min); con idea, sobre ese tema. |
 | `/idea <texto>` | Encola una idea para la siguiente publicación programada. |
 | `/ideas` · `/borrar_idea <n>` | Ver / quitar ideas de la cola. |
@@ -127,8 +137,9 @@ El cliente da órdenes al bot desde un chat privado. No hay aprobación por piez
 | `/pausar` · `/reanudar` | Detiene / reactiva las publicaciones automáticas. |
 | `/hora HH:MM` | Cambia la hora diaria. |
 | `/usuarios` · `/quitar <n>` · `/desvincular` | Gestionar quién puede dar órdenes. |
+| `/ayuda` | Lista de comandos. |
 
-Las ideas pasan por **las mismas barreras** que un post automático. Si una idea no se puede convertir en un post válido, el bot avisa el motivo y publica un tema automático.
+Las ideas pasan por **las mismas barreras** que un post automático. La idea manda sobre el post (titular, caption y escena). Si una idea no se puede convertir en un post válido, el bot avisa el motivo: una orden manual (`/forzar`) no publica nada, y una idea de la cola publica un tema automático para no perder el día. Un fallo de API o de red **no consume** la idea.
 
 <details>
 <summary><b>Vinculación y seguridad</b></summary>
@@ -138,6 +149,18 @@ Las ideas pasan por **las mismas barreras** que un post automático. Si una idea
 - **Seguridad:** solo chats privados que enviaron el código correcto (5 intentos fallidos por hora y chat); *long polling* sin webhook expuesto; el token nunca aparece en logs. Sin `TELEGRAM_BOT_TOKEN`, los comandos quedan desactivados.
 
 </details>
+
+## 📈 Operación y métricas
+
+Tres comandos de solo lectura que dan visibilidad sin pasar por los logs del servidor.
+
+| | Qué mide | De dónde sale | Detalle de diseño |
+|---|---|---|---|
+| **`/metricas`** | Seguidores, alcance, vistas, visitas al perfil, y por post: alcance, guardados, compartidos, interacciones. | Instagram API (`/insights`) | Un post con menos de 24 h no entra al ranking (sus cifras aún se completan). Si Meta rechaza una métrica se reintenta con el conjunto mínimo; si falta el permiso de *insights* se muestran likes y comentarios y se explica qué falta. Caché de 30 min para no gastar cuota. Con menos de 10 posts avisa de que es tendencia, no veredicto. |
+| **`/gasto`** | Imágenes, llamadas de texto e inspecciones visuales → USD. | `state.json` (intentos de foto) y un libro diario de llamadas a Gemini | Es una **estimación** con precios configurables (`IMAGE_COST_USD`, `TEXT_CALL_USD`, `INSPECT_CALL_USD`). Con `MONTHLY_BUDGET_USD` el bot avisa solo al 80 % y al 100 % (una vez por umbral y mes). |
+| **`/salud`** | Latido del programador, configuración, última publicación y errores, token y cuota de Instagram, clave y modelos de Gemini, dominio público, espacio del volumen, Telegram. | Comprobaciones gratuitas (no generan texto ni imágenes) | Cada comprobación es independiente: una que falla se reporta como ❌ y el resto sigue. |
+
+**`/semana` es exacta sin llamar al modelo.** Formato, tema y layouts salen de funciones deterministas (semilla = fecha), así que la agenda se calcula simulando el avance día a día con la misma lógica que usará el pipeline. Lo único que se decide ese día es la redacción. Las ideas fijadas con `/cambiar` se guardan con su fecha y tienen prioridad sobre la cola.
 
 ## 🚀 Despliegue en Railway
 
@@ -168,6 +191,8 @@ El servicio expone `/health` para el *healthcheck* y reinicia automáticamente a
 | `ADMIN_TOKEN` | recomendada | Habilita `/admin/*`; cadena larga y aleatoria. |
 | `IMAGE_ASPECT`, `IMAGE_SIZE` | no | `3:4` y `2K`. |
 | `MAX_IMAGES_PER_DAY` | no | Tope duro de imágenes generadas por día (18). |
+| `MONTHLY_BUDGET_USD` | no | Presupuesto mensual estimado: avisa al 80 % y 100 % (0 = sin avisos). |
+| `IMAGE_COST_USD`, `TEXT_CALL_USD`, `INSPECT_CALL_USD` | no | Precios de referencia para `/gasto` (0.134 / 0.035 / 0.005). |
 | `TZ_NAME`, `POST_HOUR`, `POST_MINUTE` | no | Por defecto `America/Bogota`, 10:00. |
 | `PAUSED`, `DRY_RUN` | no | Interruptor de emergencia / modo ensayo. |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_LINK_CODE` | no | Control y avisos por Telegram. |
@@ -181,7 +206,7 @@ cp .env.example .env              # completa las claves
 npm run once -- --whoami          # verifica el token de Meta
 npm run once -- --content         # solo plan y textos (centavos)
 npm run once -- --dry --count 3   # plan + fotos + composición, sin publicar (~USD 0.4–1)
-npm test                          # 23 tests: validación, diseño, Telegram, fotos
+npm test                          # 56 tests: validación, diseño, ideas, Telegram, métricas, salud, gasto
 ```
 
 ## 🗂️ Estructura
@@ -196,9 +221,15 @@ npm test                          # 23 tests: validación, diseño, Telegram, fo
 │   ├── photo.mjs       # foto + inspector visual + reintentos con tope
 │   ├── compose.mjs     # layouts de marca con sharp + resvg
 │   ├── meta.mjs        # Instagram API: contenedores, carruseles, renovación de token
+│   ├── variety.mjs     # aplicación, espacio, plano, luz y paleta por pieza (anti-repetición)
 │   ├── telegram.mjs    # long polling y vinculación
 │   ├── commands.mjs    # comandos del cliente
-│   └── state.mjs       # estado persistente (checkpoints)
+│   ├── agenda.mjs      # /semana: simulación determinista de los próximos días
+│   ├── metrics.mjs     # /metricas: ranking y comparaciones sobre los insights
+│   ├── spend.mjs       # /gasto: libro de llamadas y estimación en USD
+│   ├── health.mjs      # /salud: comprobaciones independientes
+│   ├── format.mjs      # fechas y etiquetas compartidas
+│   └── state.mjs       # estado persistente (checkpoints, ideas, caché de métricas)
 ├── knowledge/          # base de conocimiento y guía editorial
 ├── assets/fonts/       # tipografía de marca (OFL)
 ├── test/               # node --test

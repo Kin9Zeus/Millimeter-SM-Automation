@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { cfg, log } from "./config.mjs";
+import { recordUsage } from "./spend.mjs";
 
 let client;
 const getClient = () => (client ??= new GoogleGenAI({ apiKey: cfg.gemini.apiKey }));
@@ -36,8 +37,16 @@ export async function generateJson({ system, prompt, temperature = 0.9, images =
       contents: [{ role: "user", parts }],
       config: { systemInstruction: system, responseMimeType: "application/json", temperature },
     });
+    recordUsage(images.length ? "inspect" : "text");
     return parseJson(res.text);
   });
+}
+
+/** Comprobación gratuita (sin generar nada): ¿la clave funciona y existen los modelos? Para /salud. */
+export async function pingGemini() {
+  const text = await withTextModel((model) => getClient().models.get({ model }).then(() => model));
+  const image = await getClient().models.get({ model: cfg.gemini.imageModel }).then(() => cfg.gemini.imageModel, (e) => { throw new Error(`modelo de imagen ${cfg.gemini.imageModel}: ${e.message}`); });
+  return { text, image };
 }
 
 export function parseJson(text) {

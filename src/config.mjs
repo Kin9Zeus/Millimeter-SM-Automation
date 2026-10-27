@@ -8,6 +8,7 @@ if (existsSync(envFile)) process.loadEnvFile(envFile);
 const env = process.env;
 const bool = (v, d = false) => (v == null || v === "" ? d : /^(1|true|yes|si|sí)$/i.test(v));
 const int = (v, d) => (Number.isFinite(parseInt(v, 10)) ? parseInt(v, 10) : d);
+const num = (v, d) => (v != null && v !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
 
 const railwayDomain = env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : "";
 
@@ -24,6 +25,13 @@ export const cfg = {
   maxAttemptsPerDay: 4,
   maxGenerationsPerSlide: 3, // intentos de foto por pieza (el inspector rechaza y se regenera con correcciones)
   maxImagesPerDay: int(env.MAX_IMAGES_PER_DAY, 18), // tope duro de gasto: ~USD 0.13 por imagen
+  // Precios de referencia en USD para estimar el gasto (/gasto). Son estimaciones: la factura real está en ai.studio/spend.
+  pricing: {
+    imageUsd: num(env.IMAGE_COST_USD, (env.IMAGE_SIZE || "2K") === "4K" ? 0.24 : 0.134),
+    textCallUsd: num(env.TEXT_CALL_USD, 0.035), // plan, auditor
+    inspectCallUsd: num(env.INSPECT_CALL_USD, 0.005), // inspector visual
+  },
+  monthlyBudgetUsd: num(env.MONTHLY_BUDGET_USD, 0), // 0 = sin presupuesto: /gasto solo informa y no avisa de umbrales
   retryEveryMs: 10 * 60 * 1000,
   tickEveryMs: 5 * 60 * 1000,
   keepImagesDays: 30,

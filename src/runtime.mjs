@@ -29,3 +29,8 @@ export function isPastPostTime(date = new Date()) {
 }
 
 export const hhmm = ({ hour, minute }) => `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+
+// Latido del scheduler (en memoria): /salud lo usa para saber si el programador sigue vivo.
+let lastTickAt = null;
+export const markTick = () => { lastTickAt = Date.now(); };
+export const lastTick = () => lastTickAt;
