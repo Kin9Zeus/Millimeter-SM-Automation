@@ -64,7 +64,7 @@ export function validatePlan(plan, ctx) {
     if (s.title1 && s.title1.length > 24) p.push(`${tag}: title1 > 24 caracteres.`);
     if (s.title2 && s.title2.length > 24) p.push(`${tag}: title2 > 24 caracteres.`);
     if (!s.subtitle || s.subtitle.length > 80) p.push(`${tag}: subtitle obligatorio y ≤ 80 caracteres.`);
-    if (layouts[i] === "C" && (!s.big || s.big.length > 14 || !s.bigLabel || s.bigLabel.length > 28)) p.push(`${tag}: el layout C necesita big (≤14) y bigLabel (≤28).`);
+    if ((layouts[i] === "C" || layouts[i] === "L") && (!s.big || s.big.length > 14 || !s.bigLabel || s.bigLabel.length > 28)) p.push(`${tag}: el layout ${layouts[i]} necesita big (≤14) y bigLabel (≤28).`);
     if (s.alt_text == null || String(s.alt_text).length < 20) p.push(`${tag}: falta alt_text descriptivo.`);
     const sc = s.scene ?? {};
     const d = ctx.directives?.[i];

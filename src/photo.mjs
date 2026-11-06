@@ -32,7 +32,7 @@ export function buildPhotoPrompt(slide, kb) {
     `${STYLE}`,
     `COMPOSITION: ${brief} Camera: ${camera}.`,
     `SCENE: ${s.space}. ${s.furniture_and_materials}. Light: ${s.light}. The ${s.stone_application} is ONE single giant continuous panel of ${mat.nombre} (${mat.look}), floor to ceiling and side to side, veining uninterrupted: absolutely no joints, seams or divisions. Every other surface (floor, ceiling, remaining walls) is NOT stone: use warm oak wood and smooth plaster, so no stone joints or tile grids appear anywhere in the frame.`,
-    REALISM_RULES, NO_TEXT, slide.directive?.palette ? `Palette: ${slide.directive.palette}.` : PALETTE,
+    REALISM_RULES, NO_TEXT, slide.directive?.palette ? `${slide.directive.style ? `Interior style: ${slide.directive.style}. ` : ""}Palette: ${slide.directive.palette}.` : PALETTE,
   ].join("\n\n");
 }
 
@@ -47,7 +47,7 @@ function qaPrompt(layout) {
 5. Hay personas, manos o figuras deformes.
 8. La foto NO ocupa todo el cuadro: tiene márgenes, franjas o bordes blancos/crema/oscuros a los lados, arriba o abajo (letterboxing) o está enmarcada.
 6. Objetos claramente deformes o físicamente imposibles (muebles fusionados, geometría rota, perspectiva imposible, reflejos incoherentes). Detalles menores NO cuentan.
-${layout === "C" || layout === "G" ? "7. NO es una textura pura de piedra a cuadro completo (se ve una habitación, mueble, grifo, objeto, borde o fondo).\n" : ""}${layout === "E" ? "7. La franja superior (30 % de la altura) NO es una zona clara, despejada y lisa donde pueda ponerse texto oscuro.\n" : ""}${layout === "A" ? "7. El tercio inferior tiene detalles importantes o muy cargados (se cubrirá con un degradado oscuro y texto).\n" : ""}Responde SOLO JSON: {"ok": true|false, "issues": ["falla concreta y cómo corregirla en el prompt, en inglés"]}`;
+${layout === "C" || layout === "G" ? "7. NO es una textura pura de piedra a cuadro completo (se ve una habitación, mueble, grifo, objeto, borde o fondo).\n" : ""}${layout === "E" ? "7. La franja superior (30 % de la altura) NO es una zona clara, despejada y lisa donde pueda ponerse texto oscuro.\n" : ""}${layout === "A" || layout === "H" ? "7. El tercio inferior tiene detalles importantes o muy cargados (se cubrirá con un degradado oscuro o una tarjeta de texto).\n" : ""}Responde SOLO JSON: {"ok": true|false, "issues": ["falla concreta y cómo corregirla en el prompt, en inglés"]}`;
 }
 
 export async function inspectPhoto(buffer, layout) {

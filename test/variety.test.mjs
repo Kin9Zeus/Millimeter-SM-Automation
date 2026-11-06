@@ -52,6 +52,12 @@ test("el tema condiciona la aplicación de la portada y una idea la deja libre",
   for (let n = 0; n < 40; n++) {
     assert.equal(chooseDirectives({ count: 3, posts: {}, seed: `t${n}`, topicApps: ["ducha"], materials: MATS })[0].appId, "ducha");
   }
+  // Las demás piezas también parten de las aplicaciones del tema, sin repetirlas, y luego se completa con el resto.
+  for (let n = 0; n < 40; n++) {
+    const d = chooseDirectives({ count: 4, posts: {}, seed: `t4-${n}`, topicApps: ["ducha", "ducha-nicho", "bano-banera"], materials: MATS });
+    assert.deepEqual(new Set(d.slice(0, 3).map((x) => x.appId)), new Set(["ducha", "ducha-nicho", "bano-banera"]));
+    assert.equal(new Set(d.map((x) => x.appId)).size, 4);
+  }
   const free = chooseDirectives({ count: 2, posts: {}, seed: "idea", free: true });
   assert.ok(free.every((d) => d.application === null && d.space === null && d.material === null));
   assert.ok(free.every((d) => SHOTS.includes(d.shot) && LIGHTS.includes(d.light) && MOODS.some((m) => m.id === d.moodId)));

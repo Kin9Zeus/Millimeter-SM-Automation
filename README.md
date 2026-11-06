@@ -8,7 +8,7 @@
 ![Gemini](https://img.shields.io/badge/Gemini-Nano%20Banana%20Pro-4285F4?logo=googlegemini&logoColor=white)
 ![Instagram API](https://img.shields.io/badge/Instagram%20API-Meta%20Graph-E4405F?logo=instagram&logoColor=white)
 ![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?logo=railway&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-56%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-67%20passing-brightgreen)
 ![Dependencies](https://img.shields.io/badge/dependencies-3-blue)
 ![Status](https://img.shields.io/badge/status-en%20producci%C3%B3n-success)
 
@@ -91,19 +91,28 @@ Si tras 4 rondas el plan no supera las barreras, **ese día no se publica**. Es 
 
 ## 🎨 Motor de diseño
 
-Siete layouts de marca, elegidos de forma determinista para que el feed nunca se vea repetitivo: la portada no repite ninguno de los tres últimos y no se repite layout dentro de un mismo carrusel.
+Doce layouts de marca, elegidos de forma determinista para que el feed nunca se vea repetitivo: la portada no repite ninguno de los tres últimos y no se repite layout dentro de un mismo carrusel.
 
-| Layout | Descripción |
-|---|---|
-| **A** | Franja oscura |
-| **B** | Arco crema |
-| **C** | Textura + dato |
-| **D** | Dividido |
-| **E** | Portada a sangre |
-| **F** | Marco revista |
-| **G** | Tipográfica |
+| Layout | Descripción | Tema y espejo |
+|---|---|---|
+| **A** | Franja oscura sobre foto a sangre | — |
+| **B** | Arco en el fondo del tema | tema |
+| **C** | Textura + dato grande | — |
+| **D** | Dividido: foto y panel de texto | tema · espejo |
+| **E** | Portada a sangre con zona clara para el texto | — |
+| **F** | Marco tipo revista | tema |
+| **G** | Tipográfica con muestra circular | tema |
+| **H** | Tarjeta de texto sobre foto a sangre | tema · espejo |
+| **I** | Foto ancha arriba y texto debajo | tema |
+| **J** | Foto con círculo de acercamiento del mismo detalle | tema · espejo |
+| **K** | Arco lateral con columna de texto | tema · espejo |
+| **L** | Cifra grande + escena en franja (el dato sin una textura plana) | tema |
 
-**Variedad visual decidida por código, no por el modelo.** Un feed generado por IA tiende a repetirse (mismo salón, mismo roble, mismo plano frontal). Por eso [`variety.mjs`](src/variety.mjs) fija, para cada pieza, la **aplicación** de la piedra (una de las 8 oficiales, en 19 variantes), el **espacio**, el **plano**, la **luz** y el **material**, y para cada post el **ambiente** y su paleta, penalizando lo usado en los últimos 10 posts. El validador exige que la escena respete esas directivas y el banco de temas tiene 26 entradas, todas apoyadas en hechos oficiales. Las texturas planas (layouts C y G) quedan como recurso ocasional.
+Cada layout con fondo propio admite seis **temas de color dentro de la paleta de marca** (crema, lino, arena, travertino, café y café profundo) y cuatro admiten **espejo**: los 12 layouts producen decenas de presentaciones distintas sin salirse de la identidad. Tema y espejo también los decide el código, evitando lo usado en las últimas piezas.
+
+**Variedad visual decidida por código, no por el modelo.** Un feed generado por IA tiende a repetirse (mismo salón, mismo roble, mismo plano frontal). Por eso [`variety.mjs`](src/variety.mjs) fija, para cada pieza, la **aplicación** de la piedra (una de las 8 oficiales, en 52 variantes), el **espacio**, el **plano** (16), la **luz** (14) y el **material**, y para cada post el **ambiente** (16 estilos con su paleta), la **arquitectura** (15 lenguajes: mediterránea, colonial, brutalista suave, loft, hacienda…) y un **objeto de decorado** por pieza (16), penalizando lo usado en los últimos 10 posts. Aplicación, espacio, material, plano y luz los exige el validador; la arquitectura y el decorado se **añaden a la escena por código**, así que no dependen de que el modelo obedezca. Las texturas planas (layouts C y G) quedan como recurso ocasional.
+
+**La idea también se presenta distinto.** Además del tema, cada post recibe una **estructura editorial** (pregunta y respuesta, un dato protagonista, antes y después, afirmación breve, invitación al profesional, la escena habla, creencia y realidad, detalle constructivo, cómo trabajamos, cifras frente a frente), elegida según el tipo de tema y sin repetir las últimas. Cambia el gancho, el orden y el enfoque del texto, nunca los hechos.
 
 Tipografía: *Cormorant Garamond* y *Montserrat* (SIL OFL 1.1), embebidas para renderizar sin depender de las fuentes del sistema.
 
@@ -113,7 +122,7 @@ Tipografía: *Cormorant Garamond* y *Montserrat* (SIL OFL 1.1), embebidas para r
 |---|---|
 | [`knowledge/facts.json`](knowledge/facts.json) | Única fuente de datos afirmables (brochure + web oficial). |
 | [`knowledge/guia-editorial.md`](knowledge/guia-editorial.md) | Marca, sistema de diseño, estructura del caption, copy y tono. |
-| [`knowledge/topics.json`](knowledge/topics.json) | Banco de 26 temas; se elige el menos usado recientemente. |
+| [`knowledge/topics.json`](knowledge/topics.json) | Banco de 96 temas (cada aplicación, cada frente de huella, cada límite de la piedra tradicional, cada canal de contacto y cada material autorizado tienen los suyos); se elige el menos usado recientemente. Son ángulos distintos sobre los mismos hechos: ninguno añade datos. |
 | [`knowledge/materiales.json`](knowledge/materiales.json) | Los 9 materiales del catálogo y su descripción visual genérica. |
 
 El **caption** sigue un esqueleto fijo del cliente: titular · problema · solución · 4 viñetas · tagline · CTA + contacto · banderas de los países · máx. 5 hashtags.
@@ -206,7 +215,7 @@ cp .env.example .env              # completa las claves
 npm run once -- --whoami          # verifica el token de Meta
 npm run once -- --content         # solo plan y textos (centavos)
 npm run once -- --dry --count 3   # plan + fotos + composición, sin publicar (~USD 0.4–1)
-npm test                          # 56 tests: validación, diseño, ideas, Telegram, métricas, salud, gasto
+npm test                          # 67 tests: validación, diseño, variedad, ideas, Telegram, métricas, salud, gasto
 ```
 
 ## 🗂️ Estructura
@@ -219,9 +228,9 @@ npm test                          # 56 tests: validación, diseño, ideas, Teleg
 │   ├── validate.mjs    # barreras deterministas anti-alucinación
 │   ├── design.mjs      # formato, tema y layouts con semilla = fecha
 │   ├── photo.mjs       # foto + inspector visual + reintentos con tope
-│   ├── compose.mjs     # layouts de marca con sharp + resvg
+│   ├── compose.mjs     # 12 layouts de marca con temas de color y espejo (sharp + resvg)
 │   ├── meta.mjs        # Instagram API: contenedores, carruseles, renovación de token
-│   ├── variety.mjs     # aplicación, espacio, plano, luz y paleta por pieza (anti-repetición)
+│   ├── variety.mjs     # aplicación, espacio, plano, luz, ambiente, arquitectura, decorado, estructura editorial y aspecto gráfico (anti-repetición)
 │   ├── telegram.mjs    # long polling y vinculación
 │   ├── commands.mjs    # comandos del cliente
 │   ├── agenda.mjs      # /semana: simulación determinista de los próximos días

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { ALL_LAYOUTS } from "./compose.mjs";
 
 // Decisiones de diseño deterministas (semilla = fecha): así un reintento del mismo día mantiene formato y layouts,
 // pero el feed varía de un día a otro. Nada de esto depende del modelo de lenguaje.
@@ -59,12 +60,13 @@ export function rolesFor(count) {
 
 const POOLS = {
   // C y G son texturas planas de piedra: se mantienen como recurso ocasional, no como protagonistas del feed.
-  unico: [["E", 3], ["B", 3], ["D", 3], ["F", 2], ["A", 2], ["C", 0.5]],
-  gancho: [["E", 3], ["B", 3], ["D", 3], ["F", 2], ["A", 1.5]],
-  dato: [["C", 2], ["D", 3], ["B", 3], ["A", 2], ["E", 1.5], ["G", 0.5]],
-  aplicacion: [["B", 3], ["F", 3], ["D", 2], ["E", 2], ["A", 1.5]],
-  material: [["F", 3], ["B", 3], ["D", 2], ["E", 2]],
-  cta: [["G", 1.5], ["B", 3], ["F", 3], ["D", 2], ["A", 1.5]],
+  // H–L son los layouts nuevos: tarjeta, mitad superior, detalle con círculo, arco lateral y cifra + escena (L lleva el dato grande sin usar una textura).
+  unico: [["E", 3], ["B", 3], ["D", 3], ["F", 2], ["A", 2], ["H", 3], ["I", 3], ["J", 2], ["K", 2], ["C", 0.4]],
+  gancho: [["E", 3], ["B", 3], ["D", 3], ["F", 2], ["A", 1.5], ["H", 3], ["I", 3], ["J", 1.5], ["K", 2]],
+  dato: [["L", 3.5], ["D", 2], ["B", 2], ["A", 2], ["H", 2], ["I", 2], ["K", 1.5], ["J", 1.5], ["E", 1], ["C", 1], ["G", 0.5]],
+  aplicacion: [["B", 3], ["F", 3], ["D", 2], ["E", 2], ["A", 1.5], ["H", 3], ["I", 3], ["J", 2], ["K", 2]],
+  material: [["J", 3], ["F", 3], ["B", 3], ["D", 2], ["E", 2], ["K", 2], ["I", 2], ["H", 2]],
+  cta: [["G", 1.5], ["B", 3], ["F", 3], ["D", 2], ["A", 1.5], ["H", 2], ["I", 2], ["K", 2], ["J", 1]],
 };
 
 /** Layout por pieza: portada distinta a las 3 portadas anteriores y sin repetir layout dentro del post. */
@@ -81,9 +83,11 @@ export function chooseLayouts(roles, posts, date, { sceneCover = false } = {}) {
     // sceneCover (posts de una idea del cliente): la portada nunca es una textura pura (C/G), que descartaría el mueble o espacio pedido.
     const textureOk = (l) => !(sceneCover && i === 0 && (l === "C" || l === "G"));
     let allowed = pool.filter(([l]) => !used.includes(l) && (i > 0 || !recentCovers.includes(l)) && textureOk(l));
-    // Si el pool del rol se agota, se toma cualquier layout (A–G) aún no usado en este post.
-    if (!allowed.length) allowed = ["A", "B", "C", "D", "E", "F", "G"].filter((l) => !used.includes(l) && (i > 0 || !recentCovers.includes(l)) && textureOk(l)).map((l) => [l, 1]);
-    if (!allowed.length) allowed = ["A", "B", "C", "D", "E", "F", "G"].filter((l) => !used.includes(l) && textureOk(l)).map((l) => [l, 1]);
+    // Si el pool del rol se agota, se toma cualquier layout aún no usado en este post.
+    // C y L llevan una cifra grande: solo el rol «dato» las recibe como alternativa.
+    const bigOk = (l) => role === "dato" || (l !== "C" && l !== "L");
+    if (!allowed.length) allowed = ALL_LAYOUTS.filter((l) => !used.includes(l) && (i > 0 || !recentCovers.includes(l)) && textureOk(l) && bigOk(l)).map((l) => [l, 1]);
+    if (!allowed.length) allowed = ALL_LAYOUTS.filter((l) => !used.includes(l) && textureOk(l) && bigOk(l)).map((l) => [l, 1]);
     const layout = weighted(allowed, r);
     used.push(layout);
     return layout;
