@@ -15,7 +15,7 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@google/genai": "2.22.0",
+    "@google/genai": "2.32.0",
     "@resvg/resvg-js": "^2.6.2",
     "sharp": "0.35.5"
   }
