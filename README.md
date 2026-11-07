@@ -11,6 +11,7 @@
 ![Tests](https://img.shields.io/badge/tests-67%20passing-brightgreen)
 ![Dependencies](https://img.shields.io/badge/dependencies-3-blue)
 ![Status](https://img.shields.io/badge/status-en%20producci%C3%B3n-success)
+[![CI](https://github.com/Kin9Zeus/Millimeter-SM-Automation/actions/workflows/ci.yml/badge.svg)](https://github.com/Kin9Zeus/Millimeter-SM-Automation/actions/workflows/ci.yml)
 
 [El problema](#-el-problema) · [Cómo funciona](#-cómo-funciona) · [Decisiones de ingeniería](#-decisiones-de-ingeniería) · [Control por Telegram](#-control-por-telegram) · [Operación y métricas](#-operación-y-métricas) · [Despliegue](#-despliegue-en-railway) · [Límites](#-límites-conocidos)
 
