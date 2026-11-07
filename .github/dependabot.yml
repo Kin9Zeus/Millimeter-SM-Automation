@@ -4,7 +4,11 @@ updates:
     directory: /
     schedule:
       interval: monthly
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 1
+    # Breaking upgrades are done by hand, when there is time to test them.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
     groups:
       minor-and-patch:
         update-types: [minor, patch]
@@ -12,3 +16,7 @@ updates:
     directory: /
     schedule:
       interval: monthly
+    open-pull-requests-limit: 1
+    groups:
+      actions:
+        patterns: ["*"]
