@@ -7,6 +7,7 @@ import { loadKnowledge } from "./knowledge.mjs";
 import { MetaError, createCarouselChild, createCarouselContainer, createImageContainer, ensureTokenFresh, findPublishedSince, getPermalink, publishContainer, waitForContainer } from "./meta.mjs";
 import { notify } from "./notify.mjs";
 import { BudgetError, generateCheckedPhoto } from "./photo.mjs";
+import { avatarSettings, pickAvatarSlide, readAvatar, setAvatarSettings } from "./avatar.mjs";
 import { ideaForDate, loadState, removeIdea, shouldAlert, updatePost } from "./state.mjs";
 import { budgetAlert, spendReport } from "./spend.mjs";
 
@@ -51,6 +52,10 @@ function postNotes(entry, slides) {
   const L = [];
   if (entry.ideaText) L.push(`💡 Basado en tu idea: «${entry.ideaText.slice(0, 160)}»`);
   if (entry.ideaNotes) L.push(`ℹ️ No incluido de tu idea: ${entry.ideaNotes}`);
+  const oscar = slides.findIndex((s) => s.withOscar);
+  if (oscar >= 0) L.push(`👤 Oscar aparece en la pieza ${oscar + 1}.`);
+  const dropped = slides.findIndex((s) => s.avatarDropped);
+  if (dropped >= 0) L.push(`ℹ️ Tocaba incluir a Oscar en la pieza ${dropped + 1}, pero ninguna foto pasó el control de parecido; salió sin él.`);
   const fb = slides.map((s, i) => (s.macroFallback && !["C", "G"].includes(s.layout) ? i + 1 : null)).filter(Boolean);
   if (fb.length) L.push(`⚠️ En ${fb.length > 1 ? "las piezas" : "la pieza"} ${fb.join(", ")} la escena no pasó el control de calidad y se usó un primer plano de la piedra.`);
   return L.length ? `\n${L.join("\n")}` : "";
@@ -93,6 +98,15 @@ export async function runDaily({ dry = cfg.dryRun, force = false, count, extra =
       entry = updatePost(key, { ...plan, ideaText: idea && !ideaRejected ? idea : null, ideaRejected: ideaRejected ? idea : null, status: "plan_ready" });
     }
 
+    // 1b) ¿Aparece Oscar? Se decide una sola vez por post y se guarda (un reintento no vuelve a sortear).
+    if (entry.avatarSlide === undefined) {
+      const settings = avatarSettings();
+      const avatarSlide = pickAvatarSlide({ slides: entry.slides, posts: Object.values(loadState().posts), date, idea: entry.ideaText, settings });
+      if (avatarSlide != null && settings.forceNext && !dry) setAvatarSettings({ forceNext: false });
+      entry = updatePost(key, { avatarSlide });
+      if (avatarSlide != null) log(`Oscar aparecerá en la pieza ${avatarSlide + 1}.`);
+    }
+
     // 2) Piezas: foto sin texto (Nano Banana Pro) → inspección de calidad → composición con la tipografía de marca.
     const budget = { used: entry.imageGenerations ?? 0, max: cfg.maxImagesPerDay };
     const slides = entry.slides.map((s) => ({ ...s }));
@@ -103,12 +117,27 @@ export async function runDaily({ dry = cfg.dryRun, force = false, count, extra =
         const useRef = i > 0 && first.rawFile && !["C", "G"].includes(first.layout) && !["C", "G"].includes(slides[i].layout);
         let photo;
         const refs = useRef ? [readRaw(first.rawFile)] : [];
+        let avatar = null;
+        if (entry.avatarSlide === i && !slides[i].avatarDropped) {
+          try { avatar = readAvatar(); } catch { log("Oscar: no encontré la foto de referencia; la pieza sale sin él."); slides[i] = { ...slides[i], avatarDropped: true }; }
+        }
         try {
-          photo = await generateCheckedPhoto({ slide: slides[i], kb, refs, budget, index: i, date });
+          photo = await generateCheckedPhoto({ slide: slides[i], kb, refs, avatar, budget, index: i, date });
+          if (avatar) slides[i] = { ...slides[i], withOscar: true, altText: slides[i].altText ? `${slides[i].altText} Con Oscar, de MILLIMETER, en la escena.` : slides[i].altText };
         } catch (e) {
           if (e instanceof BudgetError || slides[i].macroFallback) throw e;
+          // Oscar no salió con el parecido exigido: la pieza se repite SIN él antes de simplificar la escena.
+          if (avatar) {
+            log(`Pieza ${i + 1}: ninguna foto de Oscar pasó el control (parecido/calidad); se genera la escena sin él.`);
+            slides[i] = { ...slides[i], avatarDropped: true };
+            try {
+              photo = await generateCheckedPhoto({ slide: slides[i], kb, refs, budget, index: i, date, maxAttempts: 2 });
+            } catch (e2) {
+              if (e2 instanceof BudgetError) throw e2;
+            }
+          }
           // Un último intento con la misma escena pero más sencilla, antes de renunciar a la aplicación real y caer a una textura plana.
-          if (!slides[i].simplified && !["C", "G"].includes(slides[i].layout)) {
+          if (!photo && !slides[i].simplified && !["C", "G"].includes(slides[i].layout)) {
             log(`Pieza ${i + 1}: la escena no pasó el control; último intento con una composición más sencilla.`);
             slides[i] = { ...slides[i], simplified: true };
             try {
@@ -124,6 +153,7 @@ export async function runDaily({ dry = cfg.dryRun, force = false, count, extra =
             photo = await generateCheckedPhoto({ slide: slides[i], kb, refs: [], budget, index: i, date });
           }
         }
+        if (slides[i].withOscar && !entry.avatarUsed) entry = updatePost(key, { avatarUsed: true });
         const rawFile = saveRaw(date, i + 1, photo.buffer);
         const composed = await saveComposed(date, i + 1, await composeSlide(photo.buffer, slides[i].layout, slides[i]));
         slides[i] = { ...slides[i], rawFile, composedFile: composed.file, photoAttempts: photo.attempts, qaSkipped: photo.qaSkipped };

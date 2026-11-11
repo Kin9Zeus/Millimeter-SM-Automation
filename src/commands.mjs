@@ -8,7 +8,8 @@ import { dayLabel, fmtKind, fmtTopic } from "./format.mjs";
 import { collectHealth, formatHealth } from "./health.mjs";
 import { metricsReport } from "./metrics.mjs";
 import { formatSpend, spendReport } from "./spend.mjs";
-import { isLinkBlocked, isLinked, linkChat, linkedChats, registerLinkFailure, sendText, unlinkChat } from "./telegram.mjs";
+import { downloadFile, isLinkBlocked, isLinked, linkChat, linkedChats, registerLinkFailure, sendText, unlinkChat } from "./telegram.mjs";
+import { avatarSettings, hasAvatar, lastAvatarDate, saveAvatar, setAvatarSettings } from "./avatar.mjs";
 
 // Interfaz de órdenes por Telegram. Solo atiende chats privados vinculados con el código secreto.
 
@@ -40,6 +41,7 @@ const HELP = `Comandos (solo para chats vinculados):
 /ideas — ver las ideas en cola
 /borrar_idea <n> — quitar una idea de la cola
 /previa — genera un borrador SIN publicar y te lo envía
+/oscar — Oscar en las fotos: ver estado · /oscar proximo (sale en el próximo post) · /oscar 20 (probabilidad %) · /oscar on|off · envía una foto con el texto /oscar para cambiar su foto de referencia
 /pausar · /reanudar — detiene o reactiva las publicaciones automáticas
 /hora HH:MM — cambia la hora diaria (ej. /hora 11:30)
 /usuarios · /quitar <n> · /desvincular — gestionar quién puede dar órdenes
@@ -170,6 +172,26 @@ const HANDLERS = {
     return busy ?? `🧪 Generando un borrador (NO se publica)${idea ? ` sobre tu idea` : ""}… En 2–5 minutos te llega por aquí. Genera imágenes reales (unos USD 0.4–1 de Gemini).`;
   },
 
+  async oscar({ args, msg }) {
+    const fileId = msg?.photo?.length ? msg.photo[msg.photo.length - 1].file_id : msg?.document?.mime_type?.startsWith("image/") ? msg.document.file_id : null;
+    if (fileId) {
+      const { width, height } = await saveAvatar(await downloadFile(fileId));
+      return `📸 Foto de referencia de Oscar guardada (${width}×${height}). Desde ahora sus apariciones copian los rasgos de esta foto.\nConsejo: una foto nítida, de frente, con buena luz y la cara grande da el mejor parecido (mejor si la envías como archivo, sin compresión).`;
+    }
+    const a = args.toLowerCase().trim();
+    if (!a) return oscarStatus();
+    if (/^(on|activar|si|sí)$/.test(a)) { setAvatarSettings({ enabled: true }); return `👤 Apariciones automáticas de Oscar ACTIVADAS.\n\n${oscarStatus()}`; }
+    if (/^(off|desactivar|no)$/.test(a)) { setAvatarSettings({ enabled: false, forceNext: false }); return "👤 Apariciones automáticas de Oscar DESACTIVADAS. (Una idea que lo mencione, o /oscar proximo, todavía lo incluye.)"; }
+    if (/^(pr[oó]ximo|siguiente|ya)$/.test(a)) {
+      if (!hasAvatar()) return "Primero envíame la foto de Oscar: una foto con el texto /oscar.";
+      setAvatarSettings({ forceNext: true });
+      return `👤 Oscar saldrá en la próxima publicación (${nextPublication()}), o en el próximo /forzar.`;
+    }
+    const pct = a.match(/^(\d{1,3})\s*%?$/);
+    if (pct && +pct[1] <= 100) { setAvatarSettings({ chance: +pct[1] / 100 }); return `👤 Probabilidad de que Oscar salga en un post: ${pct[1]} % (respetando ${cfg.avatar.minGapDays} días entre apariciones).`; }
+    return "Formato: /oscar · /oscar proximo · /oscar 20 · /oscar on · /oscar off · o envía una foto con el texto /oscar.";
+  },
+
   async pausar() {
     setPaused(true);
     return `⏸ Publicaciones automáticas pausadas. /forzar sigue funcionando. Reactiva con /reanudar.`;
@@ -213,11 +235,24 @@ const HANDLERS = {
   async ayuda() { return HELP; },
 };
 
-/** Punto de entrada: recibe un mensaje de Telegram (ya filtrado a tipo texto). */
+function oscarStatus() {
+  const st = avatarSettings();
+  const last = lastAvatarDate(Object.values(loadState().posts));
+  return [
+    "👤 Oscar en las fotos",
+    `Foto de referencia: ${hasAvatar() ? "✅ cargada" : "❌ falta — envía una foto con el texto /oscar"}`,
+    `Apariciones automáticas: ${st.enabled ? "activas" : "desactivadas"} · probabilidad ${Math.round(st.chance * 100)} % por post · mínimo ${st.minGapDays} días entre apariciones`,
+    `Última aparición: ${last ?? "ninguna todavía"}`,
+    st.forceNext ? "Próximo post: ✅ con Oscar" : "",
+    "Si ninguna foto supera el control de parecido, la pieza sale sin él y te aviso.",
+  ].filter(Boolean).join("\n");
+}
+
+/** Punto de entrada: recibe un mensaje de Telegram (texto, o foto/archivo con texto en el pie). */
 export async function handleMessage(msg) {
   if (msg.chat?.type !== "private") return; // nunca en grupos
   const chat = { id: String(msg.chat.id), name: [msg.from?.first_name, msg.from?.last_name].filter(Boolean).join(" ") || msg.from?.username || "sin nombre" };
-  const parsed = parseCommand(msg.text);
+  const parsed = parseCommand(msg.text ?? msg.caption);
 
   // --- Vinculación (único comando permitido a chats desconocidos) ---
   if (parsed?.cmd === "vincular") {
@@ -240,7 +275,7 @@ export async function handleMessage(msg) {
   const handler = parsed.cmd === "start" ? HANDLERS.ayuda : HANDLERS[parsed.cmd];
   if (!handler) return reply(chat.id, `No conozco el comando /${parsed.cmd}. Usa /ayuda.`);
   try {
-    const out = await handler({ args: parsed.args, chat });
+    const out = await handler({ args: parsed.args, chat, msg });
     if (out) await reply(chat.id, out);
   } catch (e) {
     logError(`Comando /${parsed.cmd}: ${e.message}`);

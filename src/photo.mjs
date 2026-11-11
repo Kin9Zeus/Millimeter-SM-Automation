@@ -8,13 +8,24 @@ import { saveRejected } from "./image.mjs";
 const REALISM_RULES =
   "REALISM RULES: The stone reads as one monolithic surface, never tiles or multiple slabs, no visible lines, seams, joints or divisions. " +
   "Flat, rigid, perfectly installed stone with no visible stone edges, no cut edges and no thickness visible anywhere. " +
-  "No bending, folding, peeling, rolling, paper-like or floating stone. Doors and cabinet fronts are closed. No people, no hands.";
+  "No bending, folding, peeling, rolling, paper-like or floating stone. Doors and cabinet fronts are closed.";
+const NO_PEOPLE = "No people, no hands.";
+
+// Pieza con Oscar: la identidad sale de la foto de referencia (siempre la PRIMERA imagen que recibe el modelo).
+export const PERSON_RULES =
+  "PERSON: Include exactly ONE person in the scene: the man shown in REFERENCE IMAGE 1 (Oscar, from the MILLIMETER team). " +
+  "He must be unmistakably the SAME real person, a perfect likeness: replicate his facial identity exactly (face shape and jawline, eyes and eye shape, eyebrows, nose, lips and smile, ears, hairline and short dark textured hair, light beard stubble and mustache, skin tone and skin texture, age and build). " +
+  "Do NOT beautify, idealize, slim, age, de-age or alter any facial feature; no generic model face. " +
+  "His face is clearly visible, well lit and in sharp focus, looking at the camera or in a natural three-quarter view. Natural, relaxed, confident pose that fits the space (standing beside the stone feature, leaning lightly on furniture, or seated), as in a real editorial portrait shot on location. " +
+  "He wears elegant smart-casual clothing in neutral tones (a light shirt, fine knit or unstructured blazer); the outfit may differ from the reference. " +
+  "He occupies roughly 30-50% of the frame height and does NOT hide the stone feature: the stone remains the hero. Natural hands with five fingers; his hands do not touch stone edges. " +
+  "Use REFERENCE IMAGE 1 ONLY for the person's identity: ignore its gray studio backdrop, lighting, stool and framing. No other people.";
 
 const NO_TEXT = "ABSOLUTELY NO text, letters, numbers, logos, watermarks, captions, labels or signage anywhere in the image. The photograph is full-bleed: it fills the entire frame edge to edge with NO white or cream borders, margins, bars, letterboxing or frames.";
 const STYLE = "Photorealistic luxury architectural photograph for a high-end natural stone brand, vertical 3:4, quiet luxury, editorial minimalist style, generous negative space, Architectural Digest style, true-to-life materials, reflections and physics.";
 const PALETTE = "Palette: beige, sand, travertine, cream, warm oak and brushed brass accents.";
 
-export function buildPhotoPrompt(slide, kb) {
+export function buildPhotoPrompt(slide, kb, { person = false } = {}) {
   const mat = kb.materialByName.get(slide.scene.stone_material);
   const brief = slide.macroFallback ? PHOTO_BRIEF.C : PHOTO_BRIEF[slide.layout];
   if (slide.layout === "C" || slide.layout === "G" || slide.macroFallback) {
@@ -22,7 +33,7 @@ export function buildPhotoPrompt(slide, kb) {
       `${STYLE}`,
       `SUBJECT: extreme close-up of ${mat.nombre} natural ${mat.tipo === "travertino" ? "travertine" : "marble"}: ${mat.look}. One continuous surface filling the entire frame. Only the stone itself: no room, no furniture, no fixtures, no objects, no surroundings.`,
       `COMPOSITION: ${brief}`,
-      REALISM_RULES, NO_TEXT, PALETTE,
+      REALISM_RULES, NO_PEOPLE, NO_TEXT, PALETTE,
     ].join("\n\n");
   }
   const s = slide.scene;
@@ -32,27 +43,30 @@ export function buildPhotoPrompt(slide, kb) {
     `${STYLE}`,
     `COMPOSITION: ${brief} Camera: ${camera}.`,
     `SCENE: ${s.space}. ${s.furniture_and_materials}. Light: ${s.light}. The ${s.stone_application} is ONE single giant continuous panel of ${mat.nombre} (${mat.look}), floor to ceiling and side to side, veining uninterrupted: absolutely no joints, seams or divisions. Every other surface (floor, ceiling, remaining walls) is NOT stone: use warm oak wood and smooth plaster, so no stone joints or tile grids appear anywhere in the frame.`,
-    REALISM_RULES, NO_TEXT, slide.directive?.palette ? `${slide.directive.style ? `Interior style: ${slide.directive.style}. ` : ""}Palette: ${slide.directive.palette}.` : PALETTE,
+    REALISM_RULES, person ? PERSON_RULES : NO_PEOPLE, NO_TEXT, slide.directive?.palette ? `${slide.directive.style ? `Interior style: ${slide.directive.style}. ` : ""}Palette: ${slide.directive.palette}.` : PALETTE,
   ].join("\n\n");
 }
 
 const QA_SYSTEM = "Eres un inspector de calidad de fotografía de arquitectura para una marca de piedra natural de lujo. Rechazas solo fallas que un espectador notaría claramente al ver la publicación en el feed: los detalles menores de herrajes, texturas o sombras NO son motivo de rechazo.";
 
-function qaPrompt(layout) {
-  return `Inspecciona esta imagen (será la base de una publicación de Instagram). Rechaza (ok=false) si ocurre CUALQUIERA de estas fallas:
+const PEOPLE_RULE = "5. Hay personas, manos o figuras deformes.";
+const AVATAR_RULE = "5. Debe aparecer EXACTAMENTE una persona y debe ser inequívocamente la MISMA persona de la SEGUNDA imagen (foto de referencia de identidad). Rechaza si sus rasgos faciales no coinciden (forma de la cara, ojos, cejas, nariz, boca, orejas, cabello, barba, tono de piel, edad), si hay más de una persona, si la cara está tapada, borrosa o de espaldas, si las manos o el cuerpo están deformes, o si la persona tapa la piedra protagonista. Sé estricto con el parecido: un rostro solo parecido o genérico NO vale.";
+
+export function qaPrompt(layout, { person = false } = {}) {
+  return `Inspecciona ${person ? "la PRIMERA imagen" : "esta imagen"} (será la base de una publicación de Instagram). Rechaza (ok=false) si ocurre CUALQUIERA de estas fallas:
 1. Hay texto, letras, números, logotipos o marcas de agua visibles.
 2. Las superficies de piedra muestran juntas, líneas de unión, baldosas, retículas o varias placas (las vetas naturales NO son juntas, ni las rendijas finas entre puertas o cajones cerrados de un mueble, ni el encuentro pared-suelo; sí lo son las líneas rectas que dividen una superficie continua de piedra).
 3. La piedra se ve gruesa: cantos de placa visibles, puertas o frentes abiertos mostrando espesor, bordes con grosor.
 4. La piedra aparece doblada, plegada, enrollada, levantada como papel o flotando.
-5. Hay personas, manos o figuras deformes.
+${person ? AVATAR_RULE : PEOPLE_RULE}
 8. La foto NO ocupa todo el cuadro: tiene márgenes, franjas o bordes blancos/crema/oscuros a los lados, arriba o abajo (letterboxing) o está enmarcada.
 6. Objetos claramente deformes o físicamente imposibles (muebles fusionados, geometría rota, perspectiva imposible, reflejos incoherentes). Detalles menores NO cuentan.
 ${layout === "C" || layout === "G" ? "7. NO es una textura pura de piedra a cuadro completo (se ve una habitación, mueble, grifo, objeto, borde o fondo).\n" : ""}${layout === "E" ? "7. La franja superior (30 % de la altura) NO es una zona clara, despejada y lisa donde pueda ponerse texto oscuro.\n" : ""}${layout === "A" || layout === "H" ? "7. El tercio inferior tiene detalles importantes o muy cargados (se cubrirá con un degradado oscuro o una tarjeta de texto).\n" : ""}Responde SOLO JSON: {"ok": true|false, "issues": ["falla concreta y cómo corregirla en el prompt, en inglés"]}`;
 }
 
-export async function inspectPhoto(buffer, layout) {
+export async function inspectPhoto(buffer, layout, avatar = null) {
   try {
-    const v = await generateJson({ system: QA_SYSTEM, prompt: qaPrompt(layout), temperature: 0, images: [buffer] });
+    const v = await generateJson({ system: QA_SYSTEM, prompt: qaPrompt(layout, { person: Boolean(avatar) }), temperature: 0, images: avatar ? [buffer, avatar] : [buffer] });
     return { ok: v.ok === true, issues: Array.isArray(v.issues) ? v.issues.map(String) : [] };
   } catch (e) {
     logError(`Inspección de imagen no disponible (${e.message}); se acepta con advertencia.`);
@@ -90,19 +104,20 @@ export async function trimSideBars(buffer, { maxFraction = 0.15, maxStd = 1.2 } 
  * Genera la foto de una pieza y la inspecciona; si falla, regenera con correcciones concretas (como pide el prompt
  * maestro: «correcciones puntuales en lugar de regenerar a ciegas»). `budget` = { used, max } compartido por el post.
  */
-export async function generateCheckedPhoto({ slide, kb, refs = [], budget, index = 0, date = "x", maxAttempts = cfg.maxGenerationsPerSlide }) {
-  let base = buildPhotoPrompt(slide, kb);
+export async function generateCheckedPhoto({ slide, kb, refs = [], avatar = null, budget, index = 0, date = "x", maxAttempts = cfg.maxGenerationsPerSlide }) {
+  let base = buildPhotoPrompt(slide, kb, { person: Boolean(avatar) });
   // La referencia solo aporta material y lenguaje de diseño; sin esto el modelo copia la escena de la primera pieza.
-  if (refs.length) base += "\n\nREFERENCE IMAGE: use it ONLY for the stone material, color palette and design language. Show a completely DIFFERENT space, different furniture, a different camera angle and a different composition. Do NOT repeat or copy the reference scene.";
+  if (refs.length) base += `\n\n${avatar ? "REFERENCE IMAGE 2" : "REFERENCE IMAGE"}: use it ONLY for the stone material, color palette and design language. Show a completely DIFFERENT space, different furniture, a different camera angle and a different composition. Do NOT repeat or copy the reference scene${avatar ? "" : ", and do not include any person from it"}.`;
+  const inputs = avatar ? [avatar, ...refs] : refs; // la foto de Oscar va SIEMPRE primero: el prompt la llama REFERENCE IMAGE 1
   let extra = "";
   let lastIssues = [];
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     if (budget.used >= budget.max) throw new BudgetError(`Tope diario de imágenes alcanzado (${budget.max}).`);
     budget.used++;
-    const g = await generateImage(base + extra, refs);
+    const g = await generateImage(base + extra, inputs);
     const t = await trimSideBars(g.buffer);
     if (t.trimmed) { log(`Se recortaron franjas laterales de la foto (${t.removed.left}px izq., ${t.removed.right}px der.).`); g.buffer = t.buffer; }
-    const qa = await inspectPhoto(g.buffer, slide.layout);
+    const qa = await inspectPhoto(g.buffer, slide.layout, avatar);
     if (qa.ok) {
       if (attempt > 1) log(`Foto aprobada tras ${attempt} intentos.`);
       return { buffer: g.buffer, model: g.model, attempts: attempt, qaSkipped: Boolean(qa.skipped) };
@@ -112,6 +127,7 @@ export async function generateCheckedPhoto({ slide, kb, refs = [], budget, index
     log(`Foto rechazada por el inspector (intento ${attempt}):`, qa.issues);
     extra = `\n\nFIX THESE PROBLEMS FROM THE PREVIOUS ATTEMPT, keeping everything else: ${qa.issues.join("; ")}`;
     // El inspector suele repetir «juntas visibles»: tras el primer rechazo se acota la superficie de piedra para que sea una sola pieza lisa.
+    if (avatar) extra += " The person MUST be an exact likeness of REFERENCE IMAGE 1: copy his real facial features precisely.";
     extra += " Make the stone feature ONE smooth, uninterrupted surface of moderate size (do not show large expanses of stone wall or stone floor) and keep every other surface non-stone.";
   }
   throw new Error(`La foto de la pieza ${slide.layout} no pasó el control de calidad tras ${maxAttempts} intentos: ${lastIssues.join("; ")}`);

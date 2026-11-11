@@ -52,8 +52,11 @@ export async function igId() {
   return (cachedId = String(me.user_id));
 }
 
+/** Etiqueta «Información de IA» de Instagram: solo si AI_LABEL=true. */
+const aiLabel = () => (cfg.meta.aiLabel ? { is_ai_generated: "true" } : {});
+
 export async function createImageContainer({ imageUrl, caption, altText }) {
-  const params = { image_url: imageUrl, caption, is_ai_generated: "true" };
+  const params = { image_url: imageUrl, caption, ...aiLabel() };
   if (altText) params.alt_text = altText;
   const r = await call(`/${await igId()}/media`, { method: "POST", params });
   return r.id;
@@ -67,9 +70,9 @@ export async function createCarouselChild({ imageUrl, altText }) {
   return r.id;
 }
 
-/** Contenedor del carrusel (2–10 hijos). is_ai_generated va solo aquí, no en los hijos. */
+/** Contenedor del carrusel (2–10 hijos). La etiqueta de IA (si está activa) va solo aquí, no en los hijos. */
 export async function createCarouselContainer({ childIds, caption }) {
-  const params = { media_type: "CAROUSEL", children: childIds.join(","), caption, is_ai_generated: "true" };
+  const params = { media_type: "CAROUSEL", children: childIds.join(","), caption, ...aiLabel() };
   const r = await call(`/${await igId()}/media`, { method: "POST", params });
   return r.id;
 }

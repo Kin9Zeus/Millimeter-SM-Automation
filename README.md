@@ -35,7 +35,8 @@ Este proyecto resuelve ambos: **un bot que trabaja solo, pero que está diseñad
 | 🗓️ **Publica solo, cada día** | Elige formato (post de 1 imagen o carrusel de 3 a 6), tema, layouts y material, y publica a la hora configurada. |
 | 🧠 **Solo dice lo que sabe** | Gemini redacta usando exclusivamente una base de conocimiento oficial. Todo número, correo y URL del texto se comprueba contra ella. |
 | 🖼️ **Fotos sin texto, tipografía exacta** | Nano Banana Pro genera la fotografía; un compositor propio superpone la tipografía de marca. El nombre, las tildes y las cifras nunca salen deformados. |
-| 👁️ **Control de calidad visual** | Un inspector (visión por IA) rechaza juntas visibles, piedra doblada, texto fantasma o personas, y regenera con correcciones. |
+| 👁️ **Control de calidad visual** | Un inspector (visión por IA) rechaza juntas visibles, piedra doblada, texto fantasma o personas no pedidas, y regenera con correcciones. Cuando una pieza lleva a Oscar, compara su cara con la foto de referencia y rechaza si el parecido no es exacto. |
+| 👤 **Oscar como avatar** | De forma esporádica (20 % por post, mínimo 4 días entre apariciones) una pieza incluye a Oscar, con su identidad tomada de una foto real que vive en el Volume (nunca en el repo). Se controla con `/oscar`. |
 | 🛡️ **Idempotente y con tope de gasto** | Un reinicio retoma donde quedó, nunca publica dos veces y nunca supera el presupuesto diario de imágenes. |
 | 📱 **Se controla desde el móvil** | Comandos de Telegram para forzar un post, encolar o fijar ideas por día, pausar o cambiar la hora. |
 | 📈 **Mide lo que publica** | `/metricas` trae alcance, guardados, compartidos y el mejor y peor post, y compara formatos y temas. |
@@ -63,7 +64,7 @@ flowchart TD
     X --> C
     C["🎨 Compositor sharp + resvg<br/>layout + tipografía de marca<br/>JPEG 1440×1920"] --> U
     U["🌐 URL pública<br/>servida desde Railway"] --> M
-    M["📤 Meta Graph API<br/>contenedor → FINISHED → publicar<br/>marcado como generado con IA"] --> N
+    M["📤 Meta Graph API<br/>contenedor → FINISHED → publicar<br/>etiqueta de IA opcional (AI_LABEL)"] --> N
     N["🔔 Aviso por Telegram<br/>+ registro en state.json"]
 ```
 
@@ -144,6 +145,7 @@ El cliente da órdenes al bot desde un chat privado. No hay aprobación por piez
 | `/idea <texto>` | Encola una idea para la siguiente publicación programada. |
 | `/ideas` · `/borrar_idea <n>` | Ver / quitar ideas de la cola. |
 | `/previa` | Genera un borrador **sin publicar** y lo envía al chat. |
+| `/oscar` | Estado de las apariciones de Oscar. `/oscar proximo` lo pone en el siguiente post, `/oscar 20` fija la probabilidad (%), `/oscar on`/`off`. Una foto con el pie `/oscar` cambia su foto de referencia. Una idea que lo mencione también lo incluye. |
 | `/pausar` · `/reanudar` | Detiene / reactiva las publicaciones automáticas. |
 | `/hora HH:MM` | Cambia la hora diaria. |
 | `/usuarios` · `/quitar <n>` · `/desvincular` | Gestionar quién puede dar órdenes. |
@@ -206,6 +208,8 @@ El servicio expone `/health` para el *healthcheck* y reinicia automáticamente a
 | `TZ_NAME`, `POST_HOUR`, `POST_MINUTE` | no | Por defecto `America/Bogota`, 10:00. |
 | `PAUSED`, `DRY_RUN` | no | Interruptor de emergencia / modo ensayo. |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_LINK_CODE` | no | Control y avisos por Telegram. |
+| `AI_LABEL` | no | `true` marca los posts con la etiqueta «Información de IA» de Instagram (`is_ai_generated`). Por defecto `false`. |
+| `AVATAR_ENABLED`, `AVATAR_CHANCE`, `AVATAR_MIN_GAP_DAYS` | no | Apariciones de Oscar (por defecto `true`, `0.2`, `4`). La foto de referencia se carga enviándola por Telegram con el pie `/oscar`. |
 | `TELEGRAM_MAX_CHATS`, `TELEGRAM_CHAT_ID` | no | Máx. de chats vinculados (4) · chat extra solo de avisos. |
 
 ## 💻 Uso local
@@ -216,7 +220,7 @@ cp .env.example .env              # completa las claves
 npm run once -- --whoami          # verifica el token de Meta
 npm run once -- --content         # solo plan y textos (centavos)
 npm run once -- --dry --count 3   # plan + fotos + composición, sin publicar (~USD 0.4–1)
-npm test                          # 67 tests: validación, diseño, variedad, ideas, Telegram, métricas, salud, gasto
+npm test                          # 71 tests: validación, diseño, variedad, ideas, Telegram, métricas, salud, gasto
 ```
 
 ## 🗂️ Estructura
@@ -250,7 +254,7 @@ npm test                          # 67 tests: validación, diseño, variedad, id
 
 - Meta exige URL pública para las imágenes: se sirven desde el propio servicio (`/media/<archivo>.jpg`, nombres no enumerables, 30 días).
 - La API no soporta stickers interactivos de stories; el bot publica posts de feed.
-- Las descripciones visuales de cada material son genéricas: el bot no puede garantizar que una piedra se vea idéntica a la real. Las imágenes son conceptuales, **siempre etiquetadas como generadas con IA** y nunca representan proyectos reales.
+- Las descripciones visuales de cada material son genéricas: el bot no puede garantizar que una piedra se vea idéntica a la real. Las imágenes son conceptuales y nunca representan proyectos reales. Desde 2026-11-11 se publican **sin** la etiqueta de IA de Instagram (activable con `AI_LABEL=true`); Instagram puede añadirla por su cuenta si detecta marcas de IA.
 - El bot es autónomo por diseño: se recomienda revisar el feed periódicamente y usar `PAUSED=true` ante cualquier duda.
 
 ## 🧰 Stack

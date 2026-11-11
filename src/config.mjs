@@ -44,7 +44,14 @@ export const cfg = {
     imageSize: env.IMAGE_SIZE || "2K",
     imageAspect: env.IMAGE_ASPECT || "3:4",
   },
+  // Oscar como avatar: aparición esporádica en las fotos (la foto de referencia se carga por Telegram con /oscar).
+  avatar: {
+    enabled: bool(env.AVATAR_ENABLED, true),
+    chance: num(env.AVATAR_CHANCE, 0.2), // probabilidad por post (0–1) una vez cumplido el intervalo mínimo
+    minGapDays: int(env.AVATAR_MIN_GAP_DAYS, 4), // días mínimos entre apariciones automáticas
+  },
   meta: {
+    aiLabel: bool(env.AI_LABEL, false), // true = marca los posts como «Información de IA» (is_ai_generated)
     token: env.META_ACCESS_TOKEN || "",
     igUserId: env.META_IG_USER_ID || "",
     apiVersion: env.META_API_VERSION || "v22.0",

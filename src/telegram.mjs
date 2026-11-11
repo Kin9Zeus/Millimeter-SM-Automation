@@ -21,6 +21,15 @@ export async function tg(method, body = {}, { timeoutMs = 40000 } = {}) {
   return json.result;
 }
 
+/** Descarga un archivo enviado al bot (p. ej. la foto de referencia de /oscar). Tope de 10 MB. */
+export async function downloadFile(fileId, { maxBytes = 10 * 1024 * 1024 } = {}) {
+  const f = await tg("getFile", { file_id: fileId });
+  if (f.file_size > maxBytes) throw new Error("El archivo pasa de 10 MB.");
+  const res = await fetch(`https://api.telegram.org/file/bot${cfg.telegram.token}/${f.file_path}`, { signal: AbortSignal.timeout(30000) });
+  if (!res.ok) throw new Error(`Telegram (descarga): HTTP ${res.status}`); // sin la URL: lleva el token
+  return Buffer.from(await res.arrayBuffer());
+}
+
 // ---------- Chats vinculados ----------
 const tgState = () => {
   const s = loadState();
@@ -108,6 +117,7 @@ export const BOT_COMMANDS = [
   ["ideas", "Ver las ideas en cola"],
   ["borrar_idea", "Quitar una idea de la cola"],
   ["previa", "Generar un borrador sin publicar"],
+  ["oscar", "Oscar en las fotos: estado, frecuencia, próximo post"],
   ["pausar", "Pausar las publicaciones automáticas"],
   ["reanudar", "Reanudar las publicaciones"],
   ["hora", "Cambiar la hora diaria (ej. /hora 11:30)"],
@@ -135,7 +145,7 @@ export function startPolling(onMessage) {
         for (const u of updates) {
           t.offset = u.update_id + 1;
           saveState(); // se guarda ANTES de procesar: un reinicio nunca repite una orden (p. ej. /forzar)
-          if (u.message?.text) await Promise.resolve(onMessage(u.message)).catch((e) => logError(`Telegram (mensaje): ${e.message}`));
+          if (u.message?.text || u.message?.caption) await Promise.resolve(onMessage(u.message)).catch((e) => logError(`Telegram (mensaje): ${e.message}`));
         }
       } catch (e) {
         if (stopped) break;
