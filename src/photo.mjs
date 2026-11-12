@@ -17,9 +17,9 @@ export const PERSON_RULES =
   "He must be unmistakably the SAME real person, a perfect likeness: replicate his facial identity exactly (face shape and jawline, eyes and eye shape, eyebrows, nose, lips and smile, ears, hairline and short dark textured hair, light beard stubble and mustache, skin tone and skin texture, age and build). " +
   "Do NOT beautify, idealize, slim, age, de-age or alter any facial feature; no generic model face. " +
   "His face is clearly visible, well lit and in sharp focus, looking at the camera or in a natural three-quarter view. Natural, relaxed, confident pose that fits the space (standing beside the stone feature, leaning lightly on furniture, or seated), as in a real editorial portrait shot on location. " +
-  "He wears elegant smart-casual clothing in neutral tones (a light shirt, fine knit or unstructured blazer); the outfit may differ from the reference. " +
+  "OUTFIT: he wears EXACTLY the same clothes and accessories as in REFERENCE IMAGE 1: same garments, same colors, same fabric texture and pattern, same tie and pocket square if present, same watch and ring if present, same fit. Do NOT change, simplify or restyle the outfit. " +
   "He occupies roughly 30-50% of the frame height and does NOT hide the stone feature: the stone remains the hero. Natural hands with five fingers; his hands do not touch stone edges. " +
-  "Use REFERENCE IMAGE 1 ONLY for the person's identity: ignore its gray studio backdrop, lighting, stool and framing. No other people.";
+  "Use REFERENCE IMAGE 1 ONLY for the person's identity and outfit: ignore its studio backdrop, lighting, stool and framing. No other people.";
 
 const NO_TEXT = "ABSOLUTELY NO text, letters, numbers, logos, watermarks, captions, labels or signage anywhere in the image. The photograph is full-bleed: it fills the entire frame edge to edge with NO white or cream borders, margins, bars, letterboxing or frames.";
 const STYLE = "Photorealistic luxury architectural photograph for a high-end natural stone brand, vertical 3:4, quiet luxury, editorial minimalist style, generous negative space, Architectural Digest style, true-to-life materials, reflections and physics.";
@@ -50,7 +50,7 @@ export function buildPhotoPrompt(slide, kb, { person = false } = {}) {
 const QA_SYSTEM = "Eres un inspector de calidad de fotografía de arquitectura para una marca de piedra natural de lujo. Rechazas solo fallas que un espectador notaría claramente al ver la publicación en el feed: los detalles menores de herrajes, texturas o sombras NO son motivo de rechazo.";
 
 const PEOPLE_RULE = "5. Hay personas, manos o figuras deformes.";
-const AVATAR_RULE = "5. Debe aparecer EXACTAMENTE una persona y debe ser inequívocamente la MISMA persona de la SEGUNDA imagen (foto de referencia de identidad). Rechaza si sus rasgos faciales no coinciden (forma de la cara, ojos, cejas, nariz, boca, orejas, cabello, barba, tono de piel, edad), si hay más de una persona, si la cara está tapada, borrosa o de espaldas, si las manos o el cuerpo están deformes, o si la persona tapa la piedra protagonista. Sé estricto con el parecido: un rostro solo parecido o genérico NO vale.";
+const AVATAR_RULE = "5. Debe aparecer EXACTAMENTE una persona y debe ser inequívocamente la MISMA persona de la SEGUNDA imagen (foto de referencia de identidad). Rechaza si sus rasgos faciales no coinciden (forma de la cara, ojos, cejas, nariz, boca, orejas, cabello, barba, tono de piel, edad), si su ropa no es la misma de la referencia (prendas, colores, corbata y accesorios visibles), si hay más de una persona, si la cara está tapada, borrosa o de espaldas, si las manos o el cuerpo están deformes, o si la persona tapa la piedra protagonista. Sé estricto con el parecido: un rostro solo parecido o genérico NO vale.";
 
 export function qaPrompt(layout, { person = false } = {}) {
   return `Inspecciona ${person ? "la PRIMERA imagen" : "esta imagen"} (será la base de una publicación de Instagram). Rechaza (ok=false) si ocurre CUALQUIERA de estas fallas:
@@ -127,7 +127,7 @@ export async function generateCheckedPhoto({ slide, kb, refs = [], avatar = null
     log(`Foto rechazada por el inspector (intento ${attempt}):`, qa.issues);
     extra = `\n\nFIX THESE PROBLEMS FROM THE PREVIOUS ATTEMPT, keeping everything else: ${qa.issues.join("; ")}`;
     // El inspector suele repetir «juntas visibles»: tras el primer rechazo se acota la superficie de piedra para que sea una sola pieza lisa.
-    if (avatar) extra += " The person MUST be an exact likeness of REFERENCE IMAGE 1: copy his real facial features precisely.";
+    if (avatar) extra += " The person MUST be an exact likeness of REFERENCE IMAGE 1: copy his real facial features precisely and keep exactly the same outfit as in the reference.";
     extra += " Make the stone feature ONE smooth, uninterrupted surface of moderate size (do not show large expanses of stone wall or stone floor) and keep every other surface non-stone.";
   }
   throw new Error(`La foto de la pieza ${slide.layout} no pasó el control de calidad tras ${maxAttempts} intentos: ${lastIssues.join("; ")}`);

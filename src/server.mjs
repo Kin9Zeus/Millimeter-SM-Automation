@@ -9,6 +9,7 @@ import { housekeeping, isRunning, runDaily, tick } from "./pipeline.mjs";
 import { isPaused } from "./runtime.mjs";
 import { linkedChats, startPolling, stopPolling } from "./telegram.mjs";
 import { loadState } from "./state.mjs";
+import { avatarSource, saveAvatar } from "./avatar.mjs";
 
 const json = (res, status, body) => {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
@@ -44,7 +45,17 @@ const server = createServer(async (req, res) => {
         const s = loadState();
         const posts = Object.values(s.posts).sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 10)
           .map(({ date, status, topic, format, count, attempts, imageGenerations, lastError, permalink, dry, slides }) => ({ date, status, topic, format, count, attempts, imageGenerations, lastError, permalink, dry, layouts: slides?.map((x) => x.layout).join(""), images: slides?.filter((x) => x.composedFile).map((x) => `/media/${x.composedFile}`) }));
-        return json(res, 200, { now: localParts(), paused: isPaused(), telegramChats: Object.keys(linkedChats()).length, dryRun: cfg.dryRun, running: isRunning(), missingConfig: missingConfig(), tokenExpiresAt: s.token?.expiresAt ?? null, posts });
+        return json(res, 200, { now: localParts(), avatar: avatarSource(), paused: isPaused(), telegramChats: Object.keys(linkedChats()).length, dryRun: cfg.dryRun, running: isRunning(), missingConfig: missingConfig(), tokenExpiresAt: s.token?.expiresAt ?? null, posts });
+      }
+
+      // PUT /admin/avatar (cuerpo = JPEG/PNG) → guarda la foto BASE de Oscar en el Volume. La usa `npm run avatar:base`.
+      if (req.method === "PUT" && url.pathname === "/admin/avatar") {
+        const chunks = [];
+        let size = 0;
+        for await (const c of req) { size += c.length; if (size > 15 * 1024 * 1024) return json(res, 413, { error: "too_large" }); chunks.push(c); }
+        const saved = await saveAvatar(Buffer.concat(chunks), { base: true });
+        log(`Foto base de Oscar actualizada (${saved.width}×${saved.height}).`);
+        return json(res, 200, { ok: true, ...saved, source: avatarSource() });
       }
 
       // POST /admin/run?dry=1  → ensayo sin publicar · POST /admin/run → corre el pipeline de hoy ahora

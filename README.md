@@ -36,7 +36,7 @@ Este proyecto resuelve ambos: **un bot que trabaja solo, pero que está diseñad
 | 🧠 **Solo dice lo que sabe** | Gemini redacta usando exclusivamente una base de conocimiento oficial. Todo número, correo y URL del texto se comprueba contra ella. |
 | 🖼️ **Fotos sin texto, tipografía exacta** | Nano Banana Pro genera la fotografía; un compositor propio superpone la tipografía de marca. El nombre, las tildes y las cifras nunca salen deformados. |
 | 👁️ **Control de calidad visual** | Un inspector (visión por IA) rechaza juntas visibles, piedra doblada, texto fantasma o personas no pedidas, y regenera con correcciones. Cuando una pieza lleva a Oscar, compara su cara con la foto de referencia y rechaza si el parecido no es exacto. |
-| 👤 **Oscar como avatar** | De forma esporádica (20 % por post, mínimo 4 días entre apariciones) una pieza incluye a Oscar, con su identidad tomada de una foto real que vive en el Volume (nunca en el repo). Se controla con `/oscar`. |
+| 👤 **Oscar como avatar** | De forma esporádica (20 % por post, mínimo 4 días entre apariciones) una pieza incluye a Oscar, con su cara **y su ropa** copiadas de una foto real que vive en el Volume (nunca en el repo). La foto base se carga con `railway run npm run avatar:base -- <foto>`; por Telegram se puede cambiar (opcional). Se controla con `/oscar`. |
 | 🛡️ **Idempotente y con tope de gasto** | Un reinicio retoma donde quedó, nunca publica dos veces y nunca supera el presupuesto diario de imágenes. |
 | 📱 **Se controla desde el móvil** | Comandos de Telegram para forzar un post, encolar o fijar ideas por día, pausar o cambiar la hora. |
 | 📈 **Mide lo que publica** | `/metricas` trae alcance, guardados, compartidos y el mejor y peor post, y compara formatos y temas. |
@@ -145,7 +145,7 @@ El cliente da órdenes al bot desde un chat privado. No hay aprobación por piez
 | `/idea <texto>` | Encola una idea para la siguiente publicación programada. |
 | `/ideas` · `/borrar_idea <n>` | Ver / quitar ideas de la cola. |
 | `/previa` | Genera un borrador **sin publicar** y lo envía al chat. |
-| `/oscar` | Estado de las apariciones de Oscar. `/oscar proximo` lo pone en el siguiente post, `/oscar 20` fija la probabilidad (%), `/oscar on`/`off`. Una foto con el pie `/oscar` cambia su foto de referencia. Una idea que lo mencione también lo incluye. |
+| `/oscar` | Estado de las apariciones de Oscar. `/oscar proximo` lo pone en el siguiente post, `/oscar 20` fija la probabilidad (%), `/oscar on`/`off`. Una foto con el pie `/oscar` cambia su foto de referencia (opcional) y `/oscar base` vuelve a la oficial. Una idea que lo mencione también lo incluye. |
 | `/pausar` · `/reanudar` | Detiene / reactiva las publicaciones automáticas. |
 | `/hora HH:MM` | Cambia la hora diaria. |
 | `/usuarios` · `/quitar <n>` · `/desvincular` | Gestionar quién puede dar órdenes. |
@@ -209,7 +209,7 @@ El servicio expone `/health` para el *healthcheck* y reinicia automáticamente a
 | `PAUSED`, `DRY_RUN` | no | Interruptor de emergencia / modo ensayo. |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_LINK_CODE` | no | Control y avisos por Telegram. |
 | `AI_LABEL` | no | `true` marca los posts con la etiqueta «Información de IA» de Instagram (`is_ai_generated`). Por defecto `false`. |
-| `AVATAR_ENABLED`, `AVATAR_CHANCE`, `AVATAR_MIN_GAP_DAYS` | no | Apariciones de Oscar (por defecto `true`, `0.2`, `4`). La foto de referencia se carga enviándola por Telegram con el pie `/oscar`. |
+| `AVATAR_ENABLED`, `AVATAR_CHANCE`, `AVATAR_MIN_GAP_DAYS` | no | Apariciones de Oscar (por defecto `true`, `0.2`, `4`). La foto base vive en el Volume (`avatar/base.jpg`, se sube con `npm run avatar:base` vía `PUT /admin/avatar`); la de Telegram (`/oscar`) es opcional y tiene prioridad. |
 | `TELEGRAM_MAX_CHATS`, `TELEGRAM_CHAT_ID` | no | Máx. de chats vinculados (4) · chat extra solo de avisos. |
 
 ## 💻 Uso local

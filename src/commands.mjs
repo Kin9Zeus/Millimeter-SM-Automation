@@ -9,7 +9,7 @@ import { collectHealth, formatHealth } from "./health.mjs";
 import { metricsReport } from "./metrics.mjs";
 import { formatSpend, spendReport } from "./spend.mjs";
 import { downloadFile, isLinkBlocked, isLinked, linkChat, linkedChats, registerLinkFailure, sendText, unlinkChat } from "./telegram.mjs";
-import { avatarSettings, hasAvatar, lastAvatarDate, saveAvatar, setAvatarSettings } from "./avatar.mjs";
+import { avatarSettings, avatarSource, hasAvatar, lastAvatarDate, resetAvatar, saveAvatar, setAvatarSettings } from "./avatar.mjs";
 
 // Interfaz de órdenes por Telegram. Solo atiende chats privados vinculados con el código secreto.
 
@@ -41,7 +41,7 @@ const HELP = `Comandos (solo para chats vinculados):
 /ideas — ver las ideas en cola
 /borrar_idea <n> — quitar una idea de la cola
 /previa — genera un borrador SIN publicar y te lo envía
-/oscar — Oscar en las fotos: ver estado · /oscar proximo (sale en el próximo post) · /oscar 20 (probabilidad %) · /oscar on|off · envía una foto con el texto /oscar para cambiar su foto de referencia
+/oscar — Oscar en las fotos: ver estado · /oscar proximo (sale en el próximo post) · /oscar 20 (probabilidad %) · /oscar on|off · envía una foto con el texto /oscar para cambiar (opcional) su foto de referencia · /oscar base vuelve a la oficial
 /pausar · /reanudar — detiene o reactiva las publicaciones automáticas
 /hora HH:MM — cambia la hora diaria (ej. /hora 11:30)
 /usuarios · /quitar <n> · /desvincular — gestionar quién puede dar órdenes
@@ -176,20 +176,21 @@ const HANDLERS = {
     const fileId = msg?.photo?.length ? msg.photo[msg.photo.length - 1].file_id : msg?.document?.mime_type?.startsWith("image/") ? msg.document.file_id : null;
     if (fileId) {
       const { width, height } = await saveAvatar(await downloadFile(fileId));
-      return `📸 Foto de referencia de Oscar guardada (${width}×${height}). Desde ahora sus apariciones copian los rasgos de esta foto.\nConsejo: una foto nítida, de frente, con buena luz y la cara grande da el mejor parecido (mejor si la envías como archivo, sin compresión).`;
+      return `📸 Foto de referencia de Oscar guardada (${width}×${height}). Desde ahora sus apariciones copian los rasgos y la ropa de esta foto (para volver a la foto base: /oscar base).\nConsejo: una foto nítida, de frente, con buena luz y la cara grande da el mejor parecido (mejor si la envías como archivo, sin compresión).`;
     }
     const a = args.toLowerCase().trim();
     if (!a) return oscarStatus();
     if (/^(on|activar|si|sí)$/.test(a)) { setAvatarSettings({ enabled: true }); return `👤 Apariciones automáticas de Oscar ACTIVADAS.\n\n${oscarStatus()}`; }
     if (/^(off|desactivar|no)$/.test(a)) { setAvatarSettings({ enabled: false, forceNext: false }); return "👤 Apariciones automáticas de Oscar DESACTIVADAS. (Una idea que lo mencione, o /oscar proximo, todavía lo incluye.)"; }
+    if (/^(base|original|restablecer)$/.test(a)) return resetAvatar() ? "👤 Listo: Oscar vuelve a salir con la foto base (la oficial)." : "Ya se está usando la foto base.";
     if (/^(pr[oó]ximo|siguiente|ya)$/.test(a)) {
-      if (!hasAvatar()) return "Primero envíame la foto de Oscar: una foto con el texto /oscar.";
+      if (!hasAvatar()) return "No hay foto de Oscar en el servidor. Envíame una foto con el texto /oscar.";
       setAvatarSettings({ forceNext: true });
       return `👤 Oscar saldrá en la próxima publicación (${nextPublication()}), o en el próximo /forzar.`;
     }
     const pct = a.match(/^(\d{1,3})\s*%?$/);
     if (pct && +pct[1] <= 100) { setAvatarSettings({ chance: +pct[1] / 100 }); return `👤 Probabilidad de que Oscar salga en un post: ${pct[1]} % (respetando ${cfg.avatar.minGapDays} días entre apariciones).`; }
-    return "Formato: /oscar · /oscar proximo · /oscar 20 · /oscar on · /oscar off · o envía una foto con el texto /oscar.";
+    return "Formato: /oscar · /oscar proximo · /oscar 20 · /oscar on · /oscar off · /oscar base · o envía una foto con el texto /oscar (opcional).";
   },
 
   async pausar() {
@@ -240,7 +241,8 @@ function oscarStatus() {
   const last = lastAvatarDate(Object.values(loadState().posts));
   return [
     "👤 Oscar en las fotos",
-    `Foto de referencia: ${hasAvatar() ? "✅ cargada" : "❌ falta — envía una foto con el texto /oscar"}`,
+    `Foto de referencia: ${{ base: "✅ foto base (la oficial)", telegram: "✅ la que enviaste por Telegram (/oscar base vuelve a la oficial)" }[avatarSource()] ?? "❌ falta en el servidor"}`,
+    "Sale siempre con la cara y la ropa de esa foto.",
     `Apariciones automáticas: ${st.enabled ? "activas" : "desactivadas"} · probabilidad ${Math.round(st.chance * 100)} % por post · mínimo ${st.minGapDays} días entre apariciones`,
     `Última aparición: ${last ?? "ninguna todavía"}`,
     st.forceNext ? "Próximo post: ✅ con Oscar" : "",

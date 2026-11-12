@@ -12,7 +12,8 @@
     "start": "node src/server.mjs",
     "dev": "node --watch src/server.mjs",
     "once": "node src/cli.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "avatar:base": "node scripts/upload-avatar.mjs"
   },
   "dependencies": {
     "@google/genai": "2.22.0",
