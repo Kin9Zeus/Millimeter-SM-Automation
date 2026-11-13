@@ -8,12 +8,13 @@
 ![Gemini](https://img.shields.io/badge/Gemini-Nano%20Banana%20Pro-4285F4?logo=googlegemini&logoColor=white)
 ![Instagram API](https://img.shields.io/badge/Instagram%20API-Meta%20Graph-E4405F?logo=instagram&logoColor=white)
 ![Railway](https://img.shields.io/badge/Deploy-Railway-0B0D0E?logo=railway&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-67%20passing-brightgreen)
+![Tests](https://img.shields.io/badge/tests-71%20passing-brightgreen)
 ![Dependencies](https://img.shields.io/badge/dependencies-3-blue)
+![Avatar](https://img.shields.io/badge/avatar%20de%20marca-identidad%20%2B%20vestuario-8A6F4E)
 ![Status](https://img.shields.io/badge/status-en%20producci%C3%B3n-success)
 [![CI](https://github.com/Kin9Zeus/Millimeter-SM-Automation/actions/workflows/ci.yml/badge.svg)](https://github.com/Kin9Zeus/Millimeter-SM-Automation/actions/workflows/ci.yml)
 
-[El problema](#-el-problema) · [Cómo funciona](#-cómo-funciona) · [Decisiones de ingeniería](#-decisiones-de-ingeniería) · [Control por Telegram](#-control-por-telegram) · [Operación y métricas](#-operación-y-métricas) · [Despliegue](#-despliegue-en-railway) · [Límites](#-límites-conocidos)
+[El problema](#-el-problema) · [Cómo funciona](#-cómo-funciona) · [Decisiones de ingeniería](#-decisiones-de-ingeniería) · [Avatar de marca](#-avatar-de-marca-oscar-en-escena) · [Control por Telegram](#-control-por-telegram) · [Operación y métricas](#-operación-y-métricas) · [Despliegue](#-despliegue-en-railway) · [Límites](#-límites-conocidos)
 
 </div>
 
@@ -35,8 +36,8 @@ Este proyecto resuelve ambos: **un bot que trabaja solo, pero que está diseñad
 | 🗓️ **Publica solo, cada día** | Elige formato (post de 1 imagen o carrusel de 3 a 6), tema, layouts y material, y publica a la hora configurada. |
 | 🧠 **Solo dice lo que sabe** | Gemini redacta usando exclusivamente una base de conocimiento oficial. Todo número, correo y URL del texto se comprueba contra ella. |
 | 🖼️ **Fotos sin texto, tipografía exacta** | Nano Banana Pro genera la fotografía; un compositor propio superpone la tipografía de marca. El nombre, las tildes y las cifras nunca salen deformados. |
-| 👁️ **Control de calidad visual** | Un inspector (visión por IA) rechaza juntas visibles, piedra doblada, texto fantasma o personas no pedidas, y regenera con correcciones. Cuando una pieza lleva a Oscar, compara su cara con la foto de referencia y rechaza si el parecido no es exacto. |
-| 👤 **Oscar como avatar** | De forma esporádica (20 % por post, mínimo 4 días entre apariciones) una pieza incluye a Oscar, con su cara **y su ropa** copiadas de una foto real que vive en el Volume (nunca en el repo). La foto base se carga con `railway run npm run avatar:base -- <foto>`; por Telegram se puede cambiar (opcional). Se controla con `/oscar`. |
+| 👁️ **Control de calidad visual** | Un inspector (visión por IA) rechaza juntas visibles, piedra doblada, texto fantasma o personas no pedidas, y regenera con correcciones. |
+| 👤 **Avatar de marca** | De vez en cuando, una pieza incluye a Oscar, del equipo MILLIMETER, con **su cara y su vestuario exactos** tomados de una foto real. Un inspector compara cada imagen con esa foto y descarta las que no se parecen. [Ver cómo funciona ↓](#-avatar-de-marca-oscar-en-escena) |
 | 🛡️ **Idempotente y con tope de gasto** | Un reinicio retoma donde quedó, nunca publica dos veces y nunca supera el presupuesto diario de imágenes. |
 | 📱 **Se controla desde el móvil** | Comandos de Telegram para forzar un post, encolar o fijar ideas por día, pausar o cambiar la hora. |
 | 📈 **Mide lo que publica** | `/metricas` trae alcance, guardados, compartidos y el mejor y peor post, y compara formatos y temas. |
@@ -55,9 +56,13 @@ flowchart TD
     V -- ok --> A
     A{"🔍 Auditor<br/>2.ª llamada a Gemini<br/>contra la base oficial"}
     A -- falla --> P
-    A -- ok --> F
+    A -- ok --> O
+    O{"👤 ¿Sale Oscar?<br/>sorteo 20 % · 4 días de intervalo<br/>o pedido explícito"}
+    O -- "sí: 1 pieza" --> FO["📸 Foto con Oscar<br/>su foto real = referencia 1"]
+    O -- no --> F
+    FO --> I
     F["📸 Foto por pieza<br/>Nano Banana Pro"] --> I
-    I{"👁️ Inspector visual"}
+    I{"👁️ Inspector visual<br/>+ parecido de cara y vestuario"}
     I -- falla --> F
     I -- "agota reintentos" --> X["Plan B: primer plano de la piedra"]
     I -- ok --> C
@@ -90,6 +95,49 @@ Si tras 4 rondas el plan no supera las barreras, **ese día no se publica**. Es 
 | **Renovación autónoma del token de Meta** | El token de larga duración (60 días) se renueva solo, se persiste en el volumen y avisa si no puede. |
 | **Mínima superficie de dependencias** | Servidor HTTP con `node:http`, scheduler con `setInterval`, Telegram por *long polling*. Solo 3 dependencias de runtime: `@google/genai`, `sharp`, `@resvg/resvg-js`. |
 | **Seguridad por diseño** | Autenticación admin con comparación en tiempo constante, sin URL ni token en logs o errores, rutas `/admin/*` que responden 404 si no hay token configurado y nombres de imagen no enumerables. |
+
+## 👤 Avatar de marca: Oscar en escena
+
+Una marca de lujo vende confianza, y la confianza tiene cara. Por eso, de vez en cuando, el bot pone a **Oscar** (del equipo MILLIMETER, con su autorización) dentro de las escenas: de pie junto a una chimenea de mármol, apoyado en un mueble de roble o sentado frente a un muro de travertino. Aparece con **su cara y su vestuario reales**, sin un modelo genérico ni ropa inventada.
+
+### Cómo se consigue el parecido
+
+```mermaid
+flowchart LR
+    R["🖼️ Foto real de Oscar<br/>(Volume, nunca en git)"] --> G
+    S["🏛️ Escena del día<br/>espacio · piedra · luz · plano"] --> G
+    G["📸 Nano Banana Pro<br/>referencia 1 = identidad + vestuario"] --> Q
+    Q{"👁️ Inspector<br/>compara la foto generada<br/>con la foto real"}
+    Q -- "cara o ropa distinta" --> G
+    Q -- "3 intentos fallidos" --> W["La pieza sale sin Oscar<br/>y se avisa por Telegram"]
+    Q -- ok --> C["🎨 Composición y publicación"]
+```
+
+| Capa | Qué hace |
+|---|---|
+| **Referencia siempre primera** | La foto de Oscar es siempre la **primera imagen** que recibe el modelo, y el prompt la nombra así. En un carrusel, la foto de continuidad de la escena va segunda y solo aporta material y estilo. |
+| **Identidad exacta** | El prompt pide copiar la forma de la cara, los ojos, las cejas, la nariz, la sonrisa, el cabello, la barba, el tono de piel y la edad. También prohíbe embellecer, rejuvenecer o sustituirlo por un rostro genérico. |
+| **Vestuario exacto** | Oscar viste **siempre** la ropa de la foto de referencia: mismas prendas, colores, textura, corbata, pañuelo y accesorios. Si se cambia la foto, cambia su vestuario. |
+| **La piedra sigue siendo protagonista** | Oscar ocupa entre el 30 y el 50 % del alto del encuadre, no tapa la superficie de piedra y no toca cantos. Solo aparece en los layouts donde una persona cabe sin estorbar (A, B, D, E, F, H, I y K); nunca en las texturas ni en los recortes de detalle. |
+| **Inspector de parecido** | El inspector visual recibe **dos imágenes**: la generada y la real. Rechaza la generada si la cara o la ropa no coinciden, si hay más de una persona, si la cara sale tapada o borrosa, o si hay manos deformes. Ante la duda, rechaza: un rostro solo «parecido» no se acepta. |
+| **Degradación segura** | Si ningún intento supera el control, la pieza se regenera **sin** Oscar y el aviso de Telegram lo explica. El post del día nunca se pierde por culpa del avatar. |
+
+### Cuándo aparece
+
+- **Esporádico por diseño:** 20 % de probabilidad por post y al menos 4 días entre apariciones automáticas, en una sola pieza del post. Se configura con `AVATAR_CHANCE` y `AVATAR_MIN_GAP_DAYS`, o desde Telegram.
+- **Bajo pedido:** `/oscar proximo` lo incluye en la siguiente publicación, y cualquier idea que lo mencione (`/idea`, `/forzar`, `/cambiar`) también lo incluye.
+- **Decisión persistente:** el sorteo se hace una sola vez por post y queda en `state.json`. Un reintento no vuelve a sortear ni cambia la pieza elegida.
+
+### Dónde vive la foto (privacidad)
+
+Este repositorio es público, así que **la foto de Oscar nunca entra en git**. Vive en el Volume de Railway:
+
+| Archivo | Origen | Prioridad |
+|---|---|---|
+| `avatar/oscar.jpg` | Opcional: el cliente envía una foto por Telegram con el pie `/oscar` | 1.ª |
+| `avatar/base.jpg` | Foto oficial, subida con `railway run npm run avatar:base -- <foto>` | 2.ª |
+
+`/oscar base` borra la foto enviada por Telegram y vuelve a la oficial. Las dos se normalizan al guardarse: se convierten a JPEG, se corrige la orientación, el lado mayor queda en 1536 px como máximo y se eliminan los metadatos. La subida de la foto base usa `PUT /admin/avatar` con `ADMIN_TOKEN`, y el script lo lee de las variables de Railway sin imprimirlo.
 
 ## 🎨 Motor de diseño
 
@@ -145,7 +193,9 @@ El cliente da órdenes al bot desde un chat privado. No hay aprobación por piez
 | `/idea <texto>` | Encola una idea para la siguiente publicación programada. |
 | `/ideas` · `/borrar_idea <n>` | Ver / quitar ideas de la cola. |
 | `/previa` | Genera un borrador **sin publicar** y lo envía al chat. |
-| `/oscar` | Estado de las apariciones de Oscar. `/oscar proximo` lo pone en el siguiente post, `/oscar 20` fija la probabilidad (%), `/oscar on`/`off`. Una foto con el pie `/oscar` cambia su foto de referencia (opcional) y `/oscar base` vuelve a la oficial. Una idea que lo mencione también lo incluye. |
+| `/oscar` | Estado del [avatar de marca](#-avatar-de-marca-oscar-en-escena): qué foto se usa, la probabilidad y la última aparición. |
+| `/oscar proximo` · `/oscar 20` · `/oscar on`/`off` | Oscar en el siguiente post · probabilidad por post (%) · activar o desactivar las apariciones automáticas. |
+| foto con el pie `/oscar` · `/oscar base` | Cambia su foto de referencia (opcional; también cambia su vestuario) · vuelve a la foto oficial. |
 | `/pausar` · `/reanudar` | Detiene / reactiva las publicaciones automáticas. |
 | `/hora HH:MM` | Cambia la hora diaria. |
 | `/usuarios` · `/quitar <n>` · `/desvincular` | Gestionar quién puede dar órdenes. |
@@ -209,7 +259,7 @@ El servicio expone `/health` para el *healthcheck* y reinicia automáticamente a
 | `PAUSED`, `DRY_RUN` | no | Interruptor de emergencia / modo ensayo. |
 | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_LINK_CODE` | no | Control y avisos por Telegram. |
 | `AI_LABEL` | no | `true` marca los posts con la etiqueta «Información de IA» de Instagram (`is_ai_generated`). Por defecto `false`. |
-| `AVATAR_ENABLED`, `AVATAR_CHANCE`, `AVATAR_MIN_GAP_DAYS` | no | Apariciones de Oscar (por defecto `true`, `0.2`, `4`). La foto base vive en el Volume (`avatar/base.jpg`, se sube con `npm run avatar:base` vía `PUT /admin/avatar`); la de Telegram (`/oscar`) es opcional y tiene prioridad. |
+| `AVATAR_ENABLED`, `AVATAR_CHANCE`, `AVATAR_MIN_GAP_DAYS` | no | Avatar de marca (por defecto `true`, `0.2`, `4`). La foto no es una variable: vive en el Volume ([ver arriba](#dónde-vive-la-foto-privacidad)). |
 | `TELEGRAM_MAX_CHATS`, `TELEGRAM_CHAT_ID` | no | Máx. de chats vinculados (4) · chat extra solo de avisos. |
 
 ## 💻 Uso local
@@ -220,7 +270,8 @@ cp .env.example .env              # completa las claves
 npm run once -- --whoami          # verifica el token de Meta
 npm run once -- --content         # solo plan y textos (centavos)
 npm run once -- --dry --count 3   # plan + fotos + composición, sin publicar (~USD 0.4–1)
-npm test                          # 71 tests: validación, diseño, variedad, ideas, Telegram, métricas, salud, gasto
+railway run npm run avatar:base -- ruta/foto.jpg   # sube la foto base de Oscar al Volume de producción
+npm test                          # 71 tests: validación, diseño, variedad, ideas, avatar, Telegram, métricas, salud, gasto
 ```
 
 ## 🗂️ Estructura
@@ -232,7 +283,8 @@ npm test                          # 71 tests: validación, diseño, variedad, id
 │   ├── content.mjs     # plan y caption con Gemini + auditor
 │   ├── validate.mjs    # barreras deterministas anti-alucinación
 │   ├── design.mjs      # formato, tema y layouts con semilla = fecha
-│   ├── photo.mjs       # foto + inspector visual + reintentos con tope
+│   ├── photo.mjs       # foto + inspector visual (incluye parecido del avatar) + reintentos con tope
+│   ├── avatar.mjs      # avatar de marca: foto base/Telegram, sorteo esporádico y ajustes
 │   ├── compose.mjs     # 12 layouts de marca con temas de color y espejo (sharp + resvg)
 │   ├── meta.mjs        # Instagram API: contenedores, carruseles, renovación de token
 │   ├── variety.mjs     # aplicación, espacio, plano, luz, ambiente, arquitectura, decorado, estructura editorial y aspecto gráfico (anti-repetición)
@@ -244,6 +296,8 @@ npm test                          # 71 tests: validación, diseño, variedad, id
 │   ├── health.mjs      # /salud: comprobaciones independientes
 │   ├── format.mjs      # fechas y etiquetas compartidas
 │   └── state.mjs       # estado persistente (checkpoints, ideas, caché de métricas)
+├── scripts/
+│   └── upload-avatar.mjs  # sube la foto base del avatar (PUT /admin/avatar)
 ├── knowledge/          # base de conocimiento y guía editorial
 ├── assets/fonts/       # tipografía de marca (OFL)
 ├── test/               # node --test
@@ -254,7 +308,9 @@ npm test                          # 71 tests: validación, diseño, variedad, id
 
 - Meta exige URL pública para las imágenes: se sirven desde el propio servicio (`/media/<archivo>.jpg`, nombres no enumerables, 30 días).
 - La API no soporta stickers interactivos de stories; el bot publica posts de feed.
-- Las descripciones visuales de cada material son genéricas: el bot no puede garantizar que una piedra se vea idéntica a la real. Las imágenes son conceptuales y nunca representan proyectos reales. Desde 2026-11-11 se publican **sin** la etiqueta de IA de Instagram (activable con `AI_LABEL=true`); Instagram puede añadirla por su cuenta si detecta marcas de IA.
+- Las descripciones visuales de cada material son genéricas: el bot no puede garantizar que una piedra se vea idéntica a la real. Las imágenes son conceptuales y nunca representan proyectos reales.
+- Por defecto los posts se publican sin la etiqueta «Información de IA» de Instagram (se activa con `AI_LABEL=true`). El bot no borra las marcas de origen de las imágenes, así que Instagram puede añadir la etiqueta por su cuenta.
+- El parecido del avatar depende del modelo de imagen. El inspector descarta los intentos fallidos, pero conviene revisar las piezas con Oscar en el feed. Una foto de referencia nítida, frontal y bien iluminada da los mejores resultados.
 - El bot es autónomo por diseño: se recomienda revisar el feed periódicamente y usar `PAUSED=true` ante cualquier duda.
 
 ## 🧰 Stack
