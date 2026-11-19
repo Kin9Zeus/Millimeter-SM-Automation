@@ -1,10 +1,10 @@
 {
   "name": "millimeter-sm-automation",
   "version": "1.0.0",
-  "description": "Bot autónomo que genera (Gemini) y publica (Meta Graph API) una imagen diaria en Instagram para MILLIMETER by Casanova.",
+  "description": "Agente autónomo que planifica, diseña, valida y publica a diario en Instagram (posts y carruseles) para MILLIMETER by Casanova, con Gemini, barreras anti-alucinación y control por Telegram.",
   "type": "module",
   "private": true,
-  "license": "MIT",
+  "license": "UNLICENSED",
   "engines": {
     "node": ">=22"
   },

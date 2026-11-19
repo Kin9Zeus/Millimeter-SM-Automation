@@ -13,8 +13,22 @@
 ![Avatar](https://img.shields.io/badge/avatar%20de%20marca-identidad%20%2B%20vestuario-8A6F4E)
 ![Status](https://img.shields.io/badge/status-en%20producci%C3%B3n-success)
 [![CI](https://github.com/Kin9Zeus/Millimeter-SM-Automation/actions/workflows/ci.yml/badge.svg)](https://github.com/Kin9Zeus/Millimeter-SM-Automation/actions/workflows/ci.yml)
+![License](https://img.shields.io/badge/licencia-propietaria-lightgrey)
 
 [El problema](#-el-problema) · [Cómo funciona](#-cómo-funciona) · [Decisiones de ingeniería](#-decisiones-de-ingeniería) · [Avatar de marca](#-avatar-de-marca-oscar-en-escena) · [Control por Telegram](#-control-por-telegram) · [Operación y métricas](#-operación-y-métricas) · [Despliegue](#-despliegue-en-railway) · [Límites](#-límites-conocidos)
+
+<br/>
+
+<table>
+  <tr>
+    <td align="center"><b>1 post / día</b><br/><sub>sin intervención humana</sub></td>
+    <td align="center"><b>3 barreras</b><br/><sub>contra la alucinación</sub></td>
+    <td align="center"><b>12 layouts</b><br/><sub>× 6 temas de color</sub></td>
+    <td align="center"><b>96 temas</b><br/><sub>sobre hechos verificados</sub></td>
+    <td align="center"><b>20 comandos</b><br/><sub>de control por Telegram</sub></td>
+    <td align="center"><b>3 dependencias</b><br/><sub>de runtime</sub></td>
+  </tr>
+</table>
 
 </div>
 
@@ -224,6 +238,15 @@ Tres comandos de solo lectura que dan visibilidad sin pasar por los logs del ser
 
 **`/semana` es exacta sin llamar al modelo.** Formato, tema y layouts salen de funciones deterministas (semilla = fecha), así que la agenda se calcula simulando el avance día a día con la misma lógica que usará el pipeline. Lo único que se decide ese día es la redacción. Las ideas fijadas con `/cambiar` se guardan con su fecha y tienen prioridad sobre la cola.
 
+## ✅ Calidad y mantenimiento
+
+| | |
+|---|---|
+| 🧪 **71 tests** con `node --test` | Validador, motor de diseño (los 12 layouts × temas × espejo renderizados de verdad), variedad, ideas, avatar, Telegram, métricas, salud y gasto. |
+| ⚙️ **CI en cada push y PR** | GitHub Actions instala con `npm ci` sobre el *lockfile* exacto y corre la suite completa ([`ci.yml`](.github/workflows/ci.yml)). |
+| 🤖 **Dependabot** | Un PR agrupado por tipo de actualización, sin saltos de versión mayor automáticos ([`dependabot.yml`](.github/dependabot.yml)). |
+| 🔐 **Política de seguridad** | Reporte privado de vulnerabilidades y alcance definido en [`SECURITY.md`](SECURITY.md). Ninguna credencial ni foto privada entra al repositorio. |
+
 ## 🚀 Despliegue en Railway
 
 1. Railway → **New Project → Deploy from GitHub repo** → este repositorio.
@@ -279,17 +302,24 @@ npm test                          # 71 tests: validación, diseño, variedad, id
 ```
 ├── src/
 │   ├── server.mjs      # HTTP (health, media, admin) + scheduler + arranque/cierre limpio
+│   ├── cli.mjs         # ejecución local: --whoami, --content, --dry
+│   ├── config.mjs      # variables de entorno y valores por defecto
+│   ├── runtime.mjs     # ajustes cambiados desde Telegram (persisten en el Volume)
 │   ├── pipeline.mjs    # orquestación idempotente del día
 │   ├── content.mjs     # plan y caption con Gemini + auditor
+│   ├── gemini.mjs      # cliente de Gemini: JSON estructurado, imágenes y cascada de modelos
+│   ├── knowledge.mjs   # carga de la base de conocimiento oficial
 │   ├── validate.mjs    # barreras deterministas anti-alucinación
 │   ├── design.mjs      # formato, tema y layouts con semilla = fecha
 │   ├── photo.mjs       # foto + inspector visual (incluye parecido del avatar) + reintentos con tope
+│   ├── image.mjs       # almacenamiento de imágenes: crudas, rechazadas y publicadas
 │   ├── avatar.mjs      # avatar de marca: foto base/Telegram, sorteo esporádico y ajustes
 │   ├── compose.mjs     # 12 layouts de marca con temas de color y espejo (sharp + resvg)
 │   ├── meta.mjs        # Instagram API: contenedores, carruseles, renovación de token
 │   ├── variety.mjs     # aplicación, espacio, plano, luz, ambiente, arquitectura, decorado, estructura editorial y aspecto gráfico (anti-repetición)
 │   ├── telegram.mjs    # long polling y vinculación
 │   ├── commands.mjs    # comandos del cliente
+│   ├── notify.mjs      # avisos a los chats vinculados
 │   ├── agenda.mjs      # /semana: simulación determinista de los próximos días
 │   ├── metrics.mjs     # /metricas: ranking y comparaciones sobre los insights
 │   ├── spend.mjs       # /gasto: libro de llamadas y estimación en USD
@@ -300,7 +330,8 @@ npm test                          # 71 tests: validación, diseño, variedad, id
 │   └── upload-avatar.mjs  # sube la foto base del avatar (PUT /admin/avatar)
 ├── knowledge/          # base de conocimiento y guía editorial
 ├── assets/fonts/       # tipografía de marca (OFL)
-├── test/               # node --test
+├── test/               # node --test (71 tests)
+├── .github/            # CI y Dependabot
 └── railway.json
 ```
 
